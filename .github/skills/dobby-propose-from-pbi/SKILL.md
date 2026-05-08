@@ -143,7 +143,50 @@ Check relations for related/predecessor/successor links:
 - If > 5, show count and ask before fetching.
 - Include as context only.
 
-### 6. Confirm Before Generating
+### 6. Refine the PBI
+
+Before generating the spec, analyze the PBI for gaps, ambiguities, or missing details. Ask the user refinement questions to sharpen the requirements.
+
+**6a. Identify gaps**
+
+Review the PBI description, acceptance criteria, and the codebase context gathered in steps 4-5. Look for:
+- Ambiguous scope (e.g., "remove code field" — from which views exactly?)
+- Missing behavioral decisions (e.g., keep derivation logic or remove it?)
+- Edge cases not covered in acceptance criteria
+- Implicit assumptions that should be explicit
+
+**6b. Ask refinement questions**
+
+Present refinement questions to the user using a structured form. Group related questions logically. Provide sensible defaults where possible.
+
+Example questions:
+- Exact tooltip text for a UI label change
+- Whether to keep/remove background logic when hiding a field
+- Which views/pages are affected
+- Behavioral choices for edge cases
+
+**6c. Write refinements back to the PBI**
+
+After the user answers (or if running autonomously, after making reasonable decisions), **update the PBI in Azure DevOps** with the refined content:
+
+- Update **Description** (`System.Description`) — expand the scope section with the decisions made
+- Update **Acceptance Criteria** (`Microsoft.VSTS.Common.AcceptanceCriteria`) — add new criteria based on refinement answers
+- Add a **Refinement Notes** section to the description capturing the decisions and rationale
+
+Use the helper script at `.github/skills/dobby-create-pbi/scripts/azdo-update-fields.py` to update fields as Markdown:
+
+```bash
+python .github/skills/dobby-create-pbi/scripts/azdo-update-fields.py \
+    --work-item-id <id> \
+    --org "<org-url>" \
+    --project "<project-name>" \
+    --field "System.Description=<path-to-desc.md>" \
+    --field "Microsoft.VSTS.Common.AcceptanceCriteria=<path-to-ac.md>"
+```
+
+This ensures the PBI stays the source of truth — the spec is generated from the *refined* PBI, and the refinements are durable in Azure DevOps.
+
+### 7. Confirm Before Generating
 
 Present a summary of what will be used to generate the spec:
 
@@ -152,22 +195,20 @@ Present a summary of what will be used to generate the spec:
 
 - **PBI**: #12345 — "Add login page" [Active, Product Backlog Item]
 - **Description**: <summary or "empty">
-- **Acceptance Criteria**: <summary or "empty">
+- **Acceptance Criteria**: <summary, including refinements>
 - **Parent**: Feature #9876 — "Modernize customer portal" (or "none")
 - **Related items**: <count> items included as context
 - **Proposed change name**: pbi-12345-add-login-page
-
-Missing/unclear:
-- <any gaps noted>
+- **Refinements applied**: <count> questions answered, PBI updated
 
 Proceed?
 ```
 
 Wait for user confirmation. A simple "yes" should suffice.
 
-### 7. Create OpenSpec Change
+### 8. Create OpenSpec Change
 
-**7a. Derive change name**
+**8a. Derive change name**
 
 Generate a kebab-case name from the PBI:
 - Format: `pbi-<id>-<title-slug>` (e.g., `pbi-12345-add-login-page`)
@@ -179,18 +220,18 @@ Generate a kebab-case name from the PBI:
   2. Create with a different name
   3. Abort
 
-**7b. Create the change**
+**8b. Create the change**
 ```bash
 openspec new change "<name>"
 ```
 
-**7c. Get artifact build order**
+**8c. Get artifact build order**
 ```bash
 openspec status --change "<name>" --json
 ```
 Parse the JSON for `applyRequires` and the list of artifacts with their dependencies.
 
-**7d. Generate artifacts in dependency order**
+**8d. Generate artifacts in dependency order**
 
 Loop through artifacts whose dependencies are satisfied:
 
@@ -217,9 +258,9 @@ Loop through artifacts whose dependencies are satisfied:
 
 7. Continue until all `applyRequires` artifacts are complete.
 
-### 8. Add Traceability
+### 9. Add Traceability
 
-**8a. Record source in proposal.md**
+**9a. Record source in proposal.md**
 
 Include a "Source" section at the top of `proposal.md` (or wherever appropriate per template):
 
@@ -229,7 +270,7 @@ Include a "Source" section at the top of `proposal.md` (or wherever appropriate 
 
 This makes the link durable regardless of whether the PBI is updated.
 
-**8b. Offer to update the PBI** (opt-in)
+**9b. Offer to link back to the PBI** (opt-in)
 
 After successful spec creation, ask:
 > "Would you like me to add a comment to PBI #12345 linking to this OpenSpec change?"
@@ -242,7 +283,7 @@ Artifacts: proposal.md, design.md, tasks.md
 
 Do not update automatically — respect team conventions.
 
-### 9. Show Final Status
+### 10. Show Final Status
 
 ```bash
 openspec status --change "<name>"
