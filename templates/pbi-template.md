@@ -1,64 +1,110 @@
-# PBI: [Title]
+# [PBI Title]
 
-## Description
+> As **[role]** of **[product/system]**,  
+> I want **[goal/desire]**,  
+> so that **[benefit/value]**.
 
-As [role] of the [product/system],
-I want [goal/desire],
-so that [benefit/value].
+---
 
-## Context
+## Overview
 
-| Field                | Value |
-|----------------------|-------|
-| 👤 Stakeholder       |       |
-| 👤 SME               |       |
-| Frontend             | J/N   |
-| Backend              | J/N   |
-| Database change      | J/N   |
-| Architecture change  | J/N   |
+| | |
+|---|---|
+| **Stakeholder** | |
+| **Subject Matter Expert** | |
+| **Priority** | |
+| **Effort Estimate** | |
 
-## 🏆 Goal
+### Impact Assessment
 
-<!-- What does success look like? One or two sentences. -->
+| Area | Impact |
+|------|--------|
+| Frontend | Yes / No |
+| Backend | Yes / No |
+| Database | Yes / No |
+| Architecture | Yes / No |
 
-## Priority
+---
 
-<!-- MoSCoW, numeric, or relative priority -->
+## Goal
 
-## 📌 In-scope
+> *Concise statement of what success looks like when this PBI is delivered.*
 
--
+---
 
-## ✖ Out-of-scope
+## Scope
 
--
+### In scope
+
+- 
+
+### Out of scope
+
+- 
+
+---
 
 ## Dependencies
 
--
+| Dependency | Owner | Status |
+|------------|-------|--------|
+| | | |
 
-## Solutions and alternatives
+---
 
-<!-- Optional: describe considered approaches -->
+## Solution Approach
+
+> *Briefly describe the chosen approach. Reference alternatives considered if relevant.*
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Given [precondition], when [action], then [expected result].
-- [ ] ...
+> Each criterion follows **Given / When / Then** format and must be independently testable.
 
-## Implementation Notes
-
-<!-- Optional: technical notes, architectural hints, references -->
+- [ ] **Given** [precondition], **when** [action], **then** [expected result].
+- [ ] **Given** [precondition], **when** [action], **then** [expected result].
 
 ---
 
 ## Definition of Done
 
-- [ ] Code reviewed and approved
-- [ ] Unit tests written and passing
-- [ ] Integration tests passing
+### Development
+
+- [ ] Code committed, peer-reviewed, and merged to main branch
+- [ ] Coding standards and guidelines followed
+- [ ] Unit tests written/updated with adequate coverage
+- [ ] No critical or high-severity defects remaining
+
+### Testing
+
+- [ ] Functional acceptance tests executed and passing
+- [ ] Regression tests updated where applicable
+- [ ] Performance and security validated (if applicable)
+
+### Documentation
+
 - [ ] User documentation updated
+- [ ] Technical documentation updated (API contracts, diagrams)
+- [ ] Release notes entry added
+
+### Delivery
+
+- [ ] CI/CD pipeline passing
 - [ ] Deployed to acceptance environment
-- [ ] Stakeholder sign-off received
+- [ ] Product Owner review and sign-off
+- [ ] Stakeholder demo completed
+
+---
+
+## References
+
+| Type | Link |
+|------|------|
+| Related PBI | |
+| Design / Mockup | |
+| Technical Spec | |
+
+---
+
+*Template version 1.0 — Dobby PBI Framework*
