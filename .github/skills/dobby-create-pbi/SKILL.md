@@ -96,7 +96,7 @@ Collect all missing fields in a single prompt where possible (batch into one ask
 
 **3b. Description and Acceptance Criteria** (optional but recommended)
 
-Generate content following the template in `templates/pbi-template.md`. The template defines two Azure DevOps fields, both stored as **Markdown**:
+Generate content following the template in `.github/skills/dobby-create-pbi/templates/pbi-template.md`. The template defines two Azure DevOps fields, both stored as **Markdown**:
 
 **Description** (`System.Description`) — populate with:
 - User story in `> **As** [role] **of** [system], **I want** ..., **so that** ...` format
