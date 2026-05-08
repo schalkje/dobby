@@ -5,20 +5,22 @@ So maybe we need to look into some skillUmm maybe we should have some skill tric
 
 ## New PBI's
 
- ID          │ Title                                                                        │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021102     │ Add 'Add New Relation' option in entity view                                 │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021103     │ Highlight newly added attributes in entity edit view                         │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021104     │ Fix legend and mini map overlap in diagram view                              │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021105     │ Add tabbed navigation for switching between diagrams                         │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021106     │ Improve diagram creation flow and fix recent diagrams auto-refresh           │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021107     │ Investigate and fix translation inconsistencies from PowerDesigner migration │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021108     │ Clarify language toggle UX and remove code field from entities/attributes    │
-  ├─────────────┼──────────────────────────────────────────────────────────────────────────────┤
-  │ 1021109     │ Add find/search functionality within diagram view  
+|ID          | Title |
+|------------|---|
+| 1021102     | Add 'Add New Relation' option in entity view                                 |
+| 1021103     | Highlight newly added attributes in entity edit view                         |
+| 1021104     | Fix legend and mini map overlap in diagram view                              |
+| 1021105     | Add tabbed navigation for switching between diagrams                         |
+| 1021106     | Improve diagram creation flow and fix recent diagrams auto-refresh           |
+| 1021107     | Investigate and fix translation inconsistencies from PowerDesigner migration |
+| 1021108     | Clarify language toggle UX and remove code field from entities/attributes    |
+| 1021109     | Add find/search functionality within diagram view  |
+
+
+
+
+
+When closing I want evidence of the change added; when possible and applicable I like screen shots of the changes; to make this valueble it might be necessary to create screenshots of the before situation.
+I don't know what the bast place is to store this, but I think it is in the comments.
+
+Please also use markdown text and images for the comment fields.

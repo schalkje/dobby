@@ -100,6 +100,28 @@ If the user provides test evidence or if test commands are available:
 
 If the user included a summary of what was done, use it as the primary evidence.
 
+**4e. Screenshot evidence** (before/after images)
+
+Check for locally stored evidence screenshots:
+```bash
+python .github/skills/dobby-close-pbi/scripts/evidence-store.py list --work-item-id <pbi-id>
+```
+
+Parse the JSON output:
+- If **before** images exist, inform the user: "Found N before screenshot(s) that will be included."
+- If **no before** images exist, display an informational note: "No before screenshots were captured. Continuing without before images."
+- Ask the user if they want to attach **after** screenshot files. If yes, collect file paths and store them:
+  ```bash
+  python .github/skills/dobby-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase after <file1> <file2> ...
+  ```
+- The user may also provide after screenshots as file paths directly without storing them first.
+
+**Note**: Before screenshots are captured *before* work begins, using:
+```bash
+python .github/skills/dobby-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase before <file1> <file2> ...
+```
+Remind the user of this capability if no before images are found.
+
 ### 5. Gather Child Tasks
 
 ```bash
@@ -130,10 +152,67 @@ Build a closing comment for the PBI Discussion field. Use this structure:
 **Evidence:**
 - <git commits, test results, OpenSpec change reference>
 
+### Before
+<!-- Include this section only if before screenshots exist -->
+![Before — <description>](<attachment-url>)
+
+### After
+<!-- Include this section only if after screenshots exist -->
+![After — <description>](<attachment-url>)
+
+**Developer notes:**
+- <optional free-form notes from the developer>
+
 **Child tasks:** <all closed / N open remaining>
 ```
 
-Present the comment to the user for confirmation before posting.
+**Composing the comment:**
+
+1. Fill in text sections from gathered evidence (steps 4a–4d).
+2. For image sections, use **local file paths as placeholders** (e.g., `![Before](local:screenshot.png)`).
+3. Present the comment preview to the user for confirmation — **do NOT upload images yet**.
+4. Allow the user to edit, add notes, or cancel at this point.
+5. If cancelled, abort — do not change work item state or post anything.
+
+### 6a. Upload Images and Finalize Comment
+
+After the user confirms the closing comment:
+
+1. Collect all image file paths (before + after screenshots).
+2. Validate files before uploading:
+   ```bash
+   python .github/skills/dobby-close-pbi/scripts/azdo-upload-attachment.py \
+       --work-item-id <pbi-id> \
+       --org "<org-url>" \
+       --project "<project-name>" \
+       --dry-run \
+       <file1> <file2> ...
+   ```
+3. Upload and attach images to the work item:
+   ```bash
+   python .github/skills/dobby-close-pbi/scripts/azdo-upload-attachment.py \
+       --work-item-id <pbi-id> \
+       --org "<org-url>" \
+       --project "<project-name>" \
+       <file1> <file2> ...
+   ```
+4. Parse the returned JSON to get attachment URLs.
+5. Replace local file path placeholders in the comment with the actual Azure DevOps attachment URLs.
+6. If any upload fails, warn the user and continue with remaining images.
+
+### 6b. Post Closing Comment
+
+Write the finalized comment (with real image URLs) to a temporary file and post it via the REST API:
+
+```bash
+python .github/skills/dobby-close-pbi/scripts/azdo-add-comment.py \
+    --work-item-id <pbi-id> \
+    --org "<org-url>" \
+    --project "<project-name>" \
+    --file <path-to-comment.md>
+```
+
+This avoids shell quoting issues with large markdown content containing image URLs.
 
 ### 7. Check Off Acceptance Criteria
 
@@ -154,6 +233,8 @@ If any acceptance criteria cannot be confirmed as done, leave them unchecked and
 ### 8. Close the PBI
 
 **8a. Add closing comment**
+
+The closing comment was already posted in step 6b using the REST API with image URLs. If step 6b was skipped (no images), fall back to:
 ```bash
 az boards work-item update --id <pbi-id> --discussion "<closing-comment>" --organization "<org-url>" --output json
 ```
