@@ -3,7 +3,7 @@ name: dobby-create-pbi
 description: Create a Product Backlog Item in Azure DevOps. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
 metadata:
   author: dobby
-  version: "1.1"
+  version: "1.3"
 ---
 
 Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
@@ -37,7 +37,14 @@ az version --output json
 - If `az` is not found → stop: "Azure CLI is not installed. Install from https://learn.microsoft.com/cli/azure/install-azure-cli"
 - If `azure-devops` extension is not in the output → stop: "Run: `az extension add --name azure-devops`"
 
-**1b. Check authentication and show identity**
+**1b. Check Python availability**
+```bash
+python --version
+```
+- If `python` is not found → stop: "Python 3 is required for the markdown field helper script. Install from https://python.org"
+- Only stdlib is needed — no pip packages required.
+
+**1c. Check authentication and show identity**
 ```bash
 az account show --query "{user:user.name, tenant:tenantId}" --output json
 ```
@@ -87,8 +94,24 @@ Collect all missing fields in a single prompt where possible (batch into one ask
 **3a. Title** (required)
 - If not provided, ask for one.
 
-**3b. Description** (optional)
-- If not provided, ask if they want to add one. If they decline, skip it.
+**3b. Description and Acceptance Criteria** (optional but recommended)
+
+Generate content following the template in `templates/pbi-template.md`. The template defines two Azure DevOps fields, both stored as **Markdown**:
+
+**Description** (`System.Description`) — populate with:
+- User story in `> **As** [role] **of** [system], **I want** ..., **so that** ...` format
+- Overview table (Stakeholder, SME, Impact Assessment)
+- Goal section
+- Scope (In scope / Out of scope)
+- Dependencies, Solution Approach, References
+
+**Acceptance Criteria** (`Microsoft.VSTS.Common.AcceptanceCriteria`) — populate with:
+- Given/When/Then criteria as checkbox items
+- No heading — just the criteria list directly
+
+Do **not** include headings like `## 📝 Description` or `## ✔️ Acceptance Criteria` — the field name in Azure DevOps already serves that purpose.
+
+If the user provides enough context, generate both fields from their input. If not, ask if they want to add details.
 
 **3c. Area path**
 - If the user provided an area path, **trust it** — do not validate against a listing first. Just use it in the create command. If creation fails due to invalid path, then re-prompt.
@@ -140,10 +163,16 @@ Ask the user to confirm or edit. Keep this lightweight — a simple "yes" should
 
 ### 5. Create the PBI
 
-**5a. Create the work item**
+PBI creation uses a **two-step process**: create with `az boards`, then update Description and Acceptance Criteria via the helper script to set **markdown format**.
+
+The `az boards` CLI does not support multiline markdown fields — it truncates content at newlines and cannot set the field format to markdown. The helper script `scripts/azdo-update-fields.py` handles this via the REST API.
+
+**5a. Create the work item (basic fields only)**
 ```bash
-az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --description "<description>" --organization "<org-url>" --output json
+az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --query "[id]" --output table
 ```
+- Do **not** pass `--description` here — it will be set via the helper script in step 5b.
+- Extract the work item `id` from the output.
 
 **Error handling:**
 - Permission denied → "You don't have permission to create work items under this area path. Check your account (<user>) or try a different area path."
@@ -151,8 +180,34 @@ az boards work-item create --title "<title>" --type "Product Backlog Item" --pro
 - Work item type not found → "This project may use a different process template (e.g., 'User Story' for Agile). Check project settings."
 - Do **not** retry creation automatically to avoid duplicates.
 
-**5b. Parse the result**
-- Extract: `id`, `fields["System.Title"]`, construct URL as `<org-url>/<project>/_workitems/edit/<id>`.
+**5b. Set Description and Acceptance Criteria as Markdown**
+
+Write the markdown content to temporary files, then run the helper script:
+
+```bash
+# Write description and acceptance criteria to temp files
+# (use Python, PowerShell, or any method that preserves UTF-8 and newlines)
+
+python .github/skills/dobby-create-pbi/scripts/azdo-update-fields.py \
+    --work-item-id <id> \
+    --org "<org-url>" \
+    --project "<project-name>" \
+    --field "System.Description=<path-to-desc.md>" \
+    --field "Microsoft.VSTS.Common.AcceptanceCriteria=<path-to-ac.md>"
+```
+
+The script:
+- Authenticates automatically (PAT via `AZURE_DEVOPS_EXT_PAT`, bearer via `ADO_TOKEN`, or `az account get-access-token`)
+- Sets both the field content and the field format to Markdown in one API call
+- Retries on transient errors (429, 502, 503, 504) with exponential backoff
+- Outputs JSON with the updated work item ID, title, URL, and confirmed field formats
+
+**If the script fails after PBI creation (partial success):**
+- Report the created work item ID to the user
+- The script is idempotent — it can be safely re-run with the same work item ID
+- Provide the exact command for manual retry
+
+Clean up temporary files after successful update.
 
 **5c. Link parent (if specified)**
 ```bash
