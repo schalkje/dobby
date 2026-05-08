@@ -1,4 +1,15 @@
-# [PBI Title]
+# PBI Template
+
+> This template maps to three Azure DevOps work item fields.
+> When creating a PBI, each section below is used to populate its corresponding field.
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AZURE DEVOPS FIELD: Description
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+## 📝 Description
 
 > As **[role]** of **[product/system]**,  
 > I want **[goal/desire]**,  
@@ -30,19 +41,19 @@
 
 ---
 
-## 📐 Scope
+### 📐 Scope
 
-### ✅ In scope
+#### ✅ In scope
 
 - 
 
-### 🚫 Out of scope
+#### 🚫 Out of scope
 
 - 
 
 ---
 
-## 🔗 Dependencies
+### 🔗 Dependencies
 
 | Dependency | Owner | Status |
 |------------|-------|--------|
@@ -50,11 +61,23 @@
 
 ---
 
-## 💡 Solution Approach
+### 💡 Solution Approach
 
 > *Briefly describe the chosen approach. Reference alternatives considered if relevant.*
 
+### 📎 References
+
+| Type | Link |
+|------|------|
+| Related PBI | |
+| Design / Mockup | |
+| Technical Spec | |
+
 ---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AZURE DEVOPS FIELD: Acceptance Criteria
+     ═══════════════════════════════════════════════════════════════════════════ -->
 
 ## ✔️ Acceptance Criteria
 
@@ -64,6 +87,10 @@
 - [ ] **Given** [precondition], **when** [action], **then** [expected result].
 
 ---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AZURE DEVOPS FIELD: Definition of Done
+     ═══════════════════════════════════════════════════════════════════════════ -->
 
 ## 🏁 Definition of Done
 
@@ -95,14 +122,4 @@
 
 ---
 
-## 📎 References
-
-| Type | Link |
-|------|------|
-| Related PBI | |
-| Design / Mockup | |
-| Technical Spec | |
-
----
-
-*Template version 1.0 — Dobby PBI Framework*
+*Template version 1.1 — Dobby PBI Framework*
