@@ -100,27 +100,46 @@ If the user provides test evidence or if test commands are available:
 
 If the user included a summary of what was done, use it as the primary evidence.
 
-**4e. Screenshot evidence** (before/after images)
+**4e. Classify change type — UI or non-UI**
+
+Determine whether this PBI involves visual/UI changes. Use these signals:
+
+| Signal | Likely UI change |
+|---|---|
+| Title/description mentions: UI, UX, visual, layout, editor, diagram, highlight, icon, theme, tooltip, button, dialog, sidebar, toolbar | Yes |
+| Changed files in `renderer/components/`, `renderer/styles/`, or image assets | Yes |
+| Changes only in `main/`, `shared/types/`, config, docs, tests, backend services | No |
+| Mixed signals or unclear | Ask the user |
+
+**If UI change → screenshots are strongly recommended.** Proceed to step 4f.
+**If non-UI change → screenshots are optional.** Skip to step 5.
+**If uncertain → ask the user:** "This PBI might involve visible UI changes. Would you like to include before/after screenshots?"
+
+**4f. Screenshot evidence** (before/after images)
 
 Check for locally stored evidence screenshots:
 ```bash
 python .github/skills/dobby-close-pbi/scripts/evidence-store.py list --work-item-id <pbi-id>
 ```
 
-Parse the JSON output:
-- If **before** images exist, inform the user: "Found N before screenshot(s) that will be included."
-- If **no before** images exist, display an informational note: "No before screenshots were captured. Continuing without before images."
-- Ask the user if they want to attach **after** screenshot files. If yes, collect file paths and store them:
+Parse the JSON output and handle each phase:
+
+**Before screenshots:**
+- If **before** images exist: "Found N before screenshot(s) that will be included."
+- If **no before** images exist AND this is a UI change: inform the user — "No before screenshots were captured. For future PBIs, capture before screenshots when starting work using: `python .github/skills/dobby-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase before <files...>`"
+- Continue without before images if unavailable — don't block closing.
+
+**After screenshots:**
+- If this is a **UI change**, actively prompt the user: "This is a UI change — would you like to capture after screenshots now? You can provide file paths to attach."
+- If the app appears to be running (check for the process), mention it: "The app appears to be running — now is a good time to capture screenshots showing the feature in action."
+- Accept file paths from the user. Store them:
   ```bash
   python .github/skills/dobby-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase after <file1> <file2> ...
   ```
-- The user may also provide after screenshots as file paths directly without storing them first.
+- The user may also provide image file paths directly without storing them first.
+- Multiple screenshots are supported — each should have a short descriptive caption.
 
-**Note**: Before screenshots are captured *before* work begins, using:
-```bash
-python .github/skills/dobby-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase before <file1> <file2> ...
-```
-Remind the user of this capability if no before images are found.
+**If the user declines screenshots**, continue without them. Do not block closing.
 
 ### 5. Gather Child Tasks
 
@@ -143,28 +162,43 @@ Build a closing comment for the PBI Discussion field. Use this structure:
 ```markdown
 ## ✓ Completed — Implementation Summary
 
-**Changes implemented:**
+### Changes implemented
 - <bullet list of what was done, derived from OpenSpec change, git history, or user input>
 
-**What is preserved / out of scope:**
-- <anything explicitly not changed, from the PBI scope>
+### Out of scope
+- <anything explicitly not changed or deferred, from the PBI scope>
 
-**Evidence:**
+### Evidence
 - <git commits, test results, OpenSpec change reference>
 
 ### Before
-<!-- Include this section only if before screenshots exist -->
 ![Before — <description>](<attachment-url>)
+![Before — <description 2>](<attachment-url-2>)
 
 ### After
-<!-- Include this section only if after screenshots exist -->
 ![After — <description>](<attachment-url>)
+![After — <description 2>](<attachment-url-2>)
 
-**Developer notes:**
+### Developer notes
 - <optional free-form notes from the developer>
 
-**Child tasks:** <all closed / N open remaining>
+### Child tasks
+<all closed / N open remaining>
+
+### Acceptance criteria
+<all checked / N unchecked — list any that could not be confirmed>
 ```
+
+**Section rules — omit sections that don't apply:**
+- Omit `### Before` if no before screenshots exist
+- Omit `### After` if no after screenshots exist
+- Omit `### Out of scope` if everything was addressed
+- Omit `### Developer notes` if the developer has no notes to add
+- Omit `### Child tasks` if the PBI has no child tasks
+- Omit `### Acceptance criteria` section from the comment if all are checked (they are already visible on the work item itself)
+- Include `### Acceptance criteria` only if some criteria could not be confirmed — list the unchecked items
+- Use multiple image lines under Before/After when multiple screenshots exist — each with a short caption
+- Never use HTML comments (`<!-- -->`) in the closing comment — use clean markdown only
 
 **Composing the comment:**
 
@@ -216,7 +250,23 @@ This avoids shell quoting issues with large markdown content containing image UR
 
 ### 7. Check Off Acceptance Criteria
 
-Before closing, mark all acceptance criteria as completed. Read the current `Microsoft.VSTS.Common.AcceptanceCriteria` field and change every `- [ ]` checkbox to `- [x]`.
+**This step is mandatory before closing.** Read the current `Microsoft.VSTS.Common.AcceptanceCriteria` field from the work item.
+
+**7a. Review each criterion against implementation evidence:**
+- Cross-reference each acceptance criterion with the OpenSpec tasks, git changes, and test results
+- For each criterion, determine: confirmed done, cannot confirm, or not applicable
+
+**7b. Show AC status to the user:**
+Present a summary showing each criterion and its status:
+```
+Acceptance Criteria Status:
+  ✓ [1] Given X, when Y, then Z — confirmed (implemented in EntityEditor.tsx)
+  ✓ [2] Given A, when B, then C — confirmed (test: EntityEditorHighlight.test.tsx)
+  ? [3] Given D, when E, then F — cannot confirm (needs manual verification)
+```
+
+**7c. Update the field:**
+Change every confirmed `- [ ]` checkbox to `- [x]`. Leave unconfirmed criteria unchecked.
 
 Use the helper script to update the field as Markdown:
 
@@ -228,7 +278,7 @@ python .github/skills/dobby-create-pbi/scripts/azdo-update-fields.py \
     --field "Microsoft.VSTS.Common.AcceptanceCriteria=<path-to-ac.md>"
 ```
 
-If any acceptance criteria cannot be confirmed as done, leave them unchecked and flag them in the closing comment.
+If any acceptance criteria cannot be confirmed as done, leave them unchecked AND include them in the closing comment under `### Acceptance criteria`.
 
 ### 8. Close the PBI
 
@@ -253,7 +303,7 @@ az boards work-item update --id <pbi-id> --state "Done" --organization "<org-url
 
 If an OpenSpec change was found in step 4a, offer to archive it:
 ```bash
-openspec archive --change "<change-name>"
+openspec archive "<change-name>"
 ```
 
 ### 9. Display Result
@@ -264,7 +314,9 @@ openspec archive --change "<change-name>"
 - **ID**: #<work-item-id>
 - **Title**: <title>
 - **State**: Done
+- **Acceptance criteria**: N/N checked
 - **Child tasks closed**: <count> (if any)
+- **Screenshots**: N attached (if any)
 - **Closing comment**: added to Discussion
 - **URL**: <direct-url>
 ```
@@ -287,6 +339,10 @@ openspec archive --change "<change-name>"
 - Use `--output json` on all `az` commands for reliable parsing.
 - Include `--organization` on all commands unless a confirmed default exists.
 - If the PBI is already Done, don't fail — offer to add remarks.
+- **For UI/visual changes, always recommend screenshots before closing.** Do not silently skip screenshots for UI work.
+- **Use clean markdown in closing comments** — no HTML comments (`<!-- -->`), no inline HTML. Omit empty sections rather than including placeholder text.
+- **Verify acceptance criteria against evidence** — do not blindly check all boxes. Cross-reference each criterion with implementation evidence.
+- **Multiple screenshots are welcome** — encourage capturing different states/views, not just a single screenshot.
 
 ## Usage Examples
 
