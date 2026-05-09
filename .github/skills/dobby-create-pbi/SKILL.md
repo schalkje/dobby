@@ -3,7 +3,7 @@ name: dobby-create-pbi
 description: Create a Product Backlog Item in Azure DevOps. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
 metadata:
   author: dobby
-  version: "1.3"
+  version: "1.5"
 ---
 
 Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
@@ -35,7 +35,16 @@ Run these checks in parallel where possible.
 az version --output json
 ```
 - If `az` is not found → stop: "Azure CLI is not installed. Install from https://learn.microsoft.com/cli/azure/install-azure-cli"
-- If `azure-devops` extension is not in the output → stop: "Run: `az extension add --name azure-devops`"
+- If `azure-devops` is not listed under `extensions` → install it: `az extension add --name azure-devops`
+  - Symptom that the extension is missing: any `az devops ...` or `az boards ...` command fails with `'devops' is misspelled or not recognized by the system.`
+  - On corporate networks the install may fail with `SSL: CERTIFICATE_VERIFY_FAILED` (self-signed certificate in chain — typical for TLS-inspecting proxies).
+    - **Preferred fix**: point Python/`az` at a CA bundle that includes the corporate root certificate. Set these env vars (User scope on Windows, or in the user's shell rc):
+      - `REQUESTS_CA_BUNDLE` = `<path-to-cacert.pem>`
+      - `AZURE_CLI_CA_BUNDLE` = `<path-to-cacert.pem>`
+      - `SSL_CERT_FILE` = `<path-to-cacert.pem>`
+      - The bundle should be `certifi`'s `cacert.pem` with the corporate root certificate appended.
+      - Verify with: `az devops project list --organization <org-url> --output json` (no SSL bypass needed).
+    - **Last-resort workaround** (insecure, only if no bundle is available yet): `AZURE_CLI_DISABLE_CONNECTION_VERIFICATION=1`. This disables TLS verification — use only to unblock and then switch to the CA bundle approach.
 
 **1b. Check Python availability**
 ```bash
@@ -242,12 +251,21 @@ If yes, write/update `.dobby/azdo-defaults.json`. Create the `.dobby/` directory
 
 ## Error Handling
 
-- **Wrong identity**: If `az devops project list` fails after `az account show` succeeds, the user is likely logged into the wrong account. Show the current identity and suggest `az login`.
+- **Wrong identity**: If `az devops project list` fails after `az account show` succeeds, the user is likely logged into the wrong account. Show the current identity and suggest `az login`. Also confirm with the user that the displayed account is the one they want — `az account show` may return a stale/long-lived corporate account even when the user expects another.
 - **Auth expiry mid-flow**: If any command fails with auth error after initial validation, tell the user to re-run `az login`.
+- **SSL / certificate errors** (`SSL: CERTIFICATE_VERIFY_FAILED`, `self-signed certificate in certificate chain`): typical on corporate networks with TLS inspection. Preferred fix: set `REQUESTS_CA_BUNDLE`, `AZURE_CLI_CA_BUNDLE`, and `SSL_CERT_FILE` to a `cacert.pem` bundle that contains the corporate root CA. Insecure fallback: `AZURE_CLI_DISABLE_CONNECTION_VERIFICATION=1` for the current shell.
+- **`'devops' is misspelled or not recognized`**: the `azure-devops` extension is not installed in the current `az` install. Run `az extension add --name azure-devops` (with the SSL workaround above if needed).
 - **Network errors**: Suggest checking connectivity.
 - **Never retry PBI creation automatically** — ask before retrying to prevent duplicates.
 - **Partial success**: If PBI is created but parent linking fails, clearly report what succeeded and what failed with the work item ID.
 - **Permission errors on create**: Show current identity and suggest checking account or area path permissions.
+
+### Shell quoting tips
+
+- **PowerShell + complex `--query`**: JMESPath expressions with `{ }`, `:`, and quoted field names (e.g. `--query "{id:id, type:fields.\"System.WorkItemType\"}"`) are fragile under PowerShell quoting and frequently fail with `argument --query: invalid jmespath_type value`. Prefer one of:
+  - Use the simplest possible `--query` (e.g. `--query "[id]"`), or
+  - Drop `--query`, use `--output json`, and parse the JSON in Python: `... --output json | python -c "import sys,json; d=json.load(sys.stdin); print(d['id'])"`.
+- Always prefer piping JSON to a small Python one-liner over fighting cross-shell quoting.
 
 ## Guardrails
 
