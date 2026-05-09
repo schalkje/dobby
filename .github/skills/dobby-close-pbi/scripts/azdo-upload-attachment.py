@@ -99,7 +99,8 @@ def upload_attachment(org_url, project, filename, file_data, auth_scheme, auth_v
     encoded_name = urllib.parse.quote(filename)
     url = f"{org}/{urllib.parse.quote(project, safe='')}/_apis/wit/attachments?fileName={encoded_name}&api-version={API_VERSION}"
 
-    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    # Azure DevOps attachment API only accepts application/octet-stream for binary uploads.
+    content_type = "application/octet-stream"
     ctx = ssl.create_default_context()
 
     for attempt in range(MAX_RETRIES + 1):

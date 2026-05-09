@@ -31,7 +31,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-API_VERSION = "7.1-preview.4"
+API_VERSION = "7.2-preview.4"
 ADO_RESOURCE_ID = "499b84ac-1321-427f-aa17-267ca6975798"
 MAX_RETRIES = 3
 INITIAL_BACKOFF = 2
@@ -67,22 +67,41 @@ def get_token():
 
 
 def post_comment(org_url, project, work_item_id, comment_text, auth_scheme, auth_value):
-    """Post a comment to a work item's discussion thread."""
+    """Post a markdown comment to a work item.
+
+    Azure DevOps' Comments REST API silently ignores the `format` field —
+    everything posted there is stored as HTML. To get markdown rendering we
+    PATCH the work item itself, setting System.History (which appears as a
+    comment in the discussion) together with the `multilineFieldsFormat`
+    hint. Confirmed working on api-version 7.2-preview.3 (May 2026).
+    """
     org = org_url.rstrip("/")
     proj = urllib.parse.quote(project, safe="")
-    url = f"{org}/{proj}/_apis/wit/workItems/{work_item_id}/comments?api-version={API_VERSION}"
+    url = f"{org}/{proj}/_apis/wit/workItems/{work_item_id}?api-version=7.2-preview.3"
 
-    payload = json.dumps({"text": comment_text}).encode("utf-8")
+    patch = [
+        {"op": "add", "path": "/multilineFieldsFormat/System.History", "value": "Markdown"},
+        {"op": "add", "path": "/fields/System.History", "value": comment_text},
+    ]
+    payload = json.dumps(patch).encode("utf-8")
     ctx = ssl.create_default_context()
 
     for attempt in range(MAX_RETRIES + 1):
-        req = urllib.request.Request(url, data=payload, method="POST")
-        req.add_header("Content-Type", "application/json")
+        req = urllib.request.Request(url, data=payload, method="PATCH")
+        req.add_header("Content-Type", "application/json-patch+json")
         req.add_header("Authorization", f"{auth_scheme} {auth_value}")
 
         try:
             resp = urllib.request.urlopen(req, context=ctx)
-            return json.loads(resp.read())
+            wi = json.loads(resp.read())
+            # Look up the comment we just created so we can return its id/url.
+            comments_url = f"{org}/{proj}/_apis/wit/workItems/{work_item_id}/comments?api-version=7.2-preview.4&$top=1&order=desc"
+            creq = urllib.request.Request(comments_url)
+            creq.add_header("Authorization", f"{auth_scheme} {auth_value}")
+            comments = json.loads(urllib.request.urlopen(creq, context=ctx).read()).get("comments", [])
+            if comments:
+                return comments[0]
+            return {"id": None, "createdDate": wi.get("fields", {}).get("System.ChangedDate"), "url": ""}
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
             if e.code in (429, 502, 503, 504) and attempt < MAX_RETRIES:
