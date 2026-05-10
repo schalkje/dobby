@@ -3,7 +3,7 @@ name: dobby-create-pbi
 description: Create a Product Backlog Item in Azure DevOps. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
 metadata:
   author: dobby
-  version: "1.5"
+  version: "1.6"
 ---
 
 Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
@@ -241,6 +241,23 @@ az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --ta
 - **URL**: <direct-url>
 ```
 
+### 6b. Markdown Gotchas (critical)
+
+When generating markdown content for `System.Description` or `Microsoft.VSTS.Common.AcceptanceCriteria`, follow these rules — they are non-obvious failure modes that produce broken-looking content in ADO:
+
+1. **`#NNNN` does NOT autolink in rendered markdown.** Azure DevOps autolinks `#NNNN` in plain-text comments, but in **markdown-formatted description / AC fields it does not**. Always use a full link:
+   - ❌ `See #1021105 for the foundation.`
+   - ✅ `See [#1021105](https://dev.azure.com/<org>/<project>/_workitems/edit/1021105) for the foundation.`
+   - This applies in tables, bullet lists, and prose. Apply it to **every** work item reference, including the parent and any sibling/dependency references.
+
+2. **Code blocks suppress markdown link rendering.** ASCII diagrams or fenced code blocks hide any `[text](url)` links inside. If you want a hierarchy or order diagram with clickable links, use a **markdown bullet tree** instead of a code block:
+   - ❌ ```\n#1021105 → #1021174\n```  (links won't render)
+   - ✅ Bulleted tree with explicit `[#NNNN](url)` per node
+
+3. **Field format defaults to HTML.** When updating fields via `az boards work-item update --fields "..."` or via raw REST `PATCH` without setting `multilineFieldsFormat`, ADO renders the content as HTML — escaping markdown syntax. **Always use the helper script** (which sets format = Markdown) for any multiline field write — both on create and on update.
+
+4. **`az boards work-item update --description "..."` truncates at the first newline.** The same limitation that applies to `create`. Never use it for multiline content. Use the helper script instead.
+
 ### 7. Save Defaults
 
 If `.dobby/azdo-defaults.json` does not exist, or if org/project/team differ from stored values, offer to save:
@@ -277,6 +294,55 @@ If yes, write/update `.dobby/azdo-defaults.json`. Create the `.dobby/` directory
 - Never retry creation without explicit user confirmation
 - Use `--output json` on all `az` commands for reliable parsing
 - Include `--organization` on all commands unless a confirmed default exists
+
+## Updating an Existing PBI
+
+The same helper script is used to **update** existing work items. This includes refining a description, replacing acceptance criteria, or fixing field-format issues (e.g., a PBI that was created with HTML format and needs to be re-saved as Markdown).
+
+```bash
+python .github/skills/dobby-create-pbi/scripts/azdo-update-fields.py \
+    --work-item-id <id> \
+    --org "<org-url>" \
+    --project "<project-name>" \
+    --field "System.Description=<path-to-desc.md>" \
+    --field "Microsoft.VSTS.Common.AcceptanceCriteria=<path-to-ac.md>"
+```
+
+The script uses `op: add`, which is upsert-safe — it works whether the field has a current value or not.
+
+### Other update operations
+
+For **non-multiline fields** (title, area path, iteration, priority), `az boards work-item update --fields "Field=value"` is fine.
+
+For **re-parenting** (moving a work item under a different parent):
+```bash
+az boards work-item relation remove --id <id> --relation-type parent --target-id <old-parent-id> --yes --organization "<org-url>"
+az boards work-item relation add    --id <id> --relation-type parent --target-id <new-parent-id> --organization "<org-url>"
+```
+
+For **predecessor / successor** ordering between sibling PBIs:
+```bash
+az boards work-item relation add --id <from-id> --relation-type Successor --target-id <to-id> --organization "<org-url>"
+```
+(`Predecessor` is the inverse — pick one direction per pair, ADO mirrors automatically.)
+
+After any update, re-fetch with `az boards work-item show --id <id> --output json` to confirm the change.
+
+## When to Split into a Feature + Multiple PBIs
+
+If the user's request expands beyond what one PBI can reasonably hold, consider proposing a split. Heuristics:
+
+- **1–3 child items**: stay flat — create the PBIs as siblings under the existing parent.
+- **>3 child items, or a clear multi-phase deliverable**: propose a **new sub-Feature** (parented to the existing parent feature) containing the PBIs. Naming convention used in this repo: `"<Project> - <Feature Name>"` (e.g., `"CDM Editor - Tabbed Workspace"`).
+- **Mixed scope (some clarification of an existing PBI + new follow-ups)**: refine the existing PBI in place AND create new sibling PBIs for follow-ups; link with Predecessor/Successor where order matters.
+
+Always confirm the proposed split with the user via `ask_user` before creating any work items. Show the proposed hierarchy and dependency order. Once confirmed:
+
+1. Create the Feature (if needed) and link to its parent.
+2. Update the existing PBI (if its scope is being refined) — use the helper script for any markdown content.
+3. Create the new PBIs — use the helper script for description and AC.
+4. Link order via Predecessor/Successor relations.
+5. In each work item's description, reference siblings/dependencies as full markdown links (`[#NNNN](url)`) — see "Markdown Gotchas" section.
 
 ## Usage Examples
 
