@@ -24,3 +24,24 @@ When closing I want evidence of the change added; when possible and applicable I
 I don't know what the bast place is to store this, but I think it is in the comments.
 
 Please also use markdown text and images for the comment fields.
+
+## Lessons Learned — 2026-05-10 (PBI 1021105 refinement session)
+
+Real-world session that exercised the dobby-create-pbi skill across refinement (one PBI expanded into a Feature + 4 PBIs). Captured for backlog into the next round of skill improvements.
+
+### Skill-level findings (already addressed in `dobby-create-pbi` v1.6)
+
+- **`#NNNN` does not autolink in markdown-rendered description / AC** in Azure DevOps. Must use `[#NNNN](url)` everywhere. Added "Markdown Gotchas" section to SKILL.md.
+- **Code blocks suppress markdown links** — ASCII tree diagrams hide `[text](url)`. Use a markdown bullet tree instead.
+- **Field format defaults to HTML** when set via `az boards` or raw REST `PATCH` without `multilineFieldsFormat`. The helper script must be used for **every** multiline write — create AND update.
+- **`az boards work-item update --description "..."` corrupts multiline content** the same way create does. Documented in SKILL.md.
+- **Updating existing PBIs** is now documented (re-parent, predecessor/successor, field updates).
+- **When to create a Feature vs flat PBIs** — heuristic added (>3 child items → propose sub-feature with naming `"<Project> - <Feature Name>"`).
+
+### Open backlog items (candidate skills / improvements)
+
+- [ ] **`dobby-create-feature` skill** — Create Features (not PBIs). Should reuse the same field-update helper script. Sub-feature naming convention should match the parent project.
+- [ ] **`dobby-update-pbi` skill** (or `dobby-refine-pbi`) — Dedicated skill for refining an existing PBI: update title/description/AC (always via helper script), re-parent, add/remove relations. Currently spread across the create-pbi SKILL.md "Updating" section.
+- [ ] **`dobby-split-pbi` skill** — Wraps the "expand a request into Feature + multiple PBIs" workflow: confirm hierarchy with user, create feature, refine existing PBI, create siblings, link order. Composition of the above three skills.
+- [ ] **Helper script enhancement**: accept inline string content (`--field "Ref=@string:..."`) so callers don't have to write temp files for short content. Optional.
+- [ ] **Defaults file**: also store `defaultParentFeature` for quick PBI creation in active features.
