@@ -6,8 +6,6 @@ metadata:
   version: "1.0"
 ---
 
-<!-- This file is a copy of `skills/dobby-propose-from-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
-
 Create an OpenSpec change proposal from an existing Azure DevOps Product Backlog Item.
 
 **Input**: A PBI identifier — work item number, title/keywords, `AB#12345` reference, or a full Azure DevOps work item URL.

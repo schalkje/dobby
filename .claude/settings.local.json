@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/jeroen/repo/dobby status)",
+      "Bash(git -C /home/jeroen/repo/dobby log --oneline -20)",
+      "Bash(git -C /home/jeroen/repo/dobby diff --stat)",
+      "Bash(git -C /home/jeroen/repo/dobby diff .github/skills/dobby-create-pbi/SKILL.md)",
+      "Bash(python3 scripts/sync-skills.py)",
+      "Bash(python3 *)"
+    ]
+  }
+}

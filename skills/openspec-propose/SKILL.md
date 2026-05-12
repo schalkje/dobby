@@ -9,8 +9,6 @@ metadata:
   generatedBy: "1.3.1"
 ---
 
-<!-- This file is a copy of `skills/openspec-propose/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
-
 Propose a new change - create the change and generate all artifacts in one step.
 
 I'll create a change with artifacts:

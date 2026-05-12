@@ -1,2 +1,6 @@
 # Local evidence screenshots (may contain sensitive data)
 .dobby/evidence/
+
+# Python bytecode from scripts/
+__pycache__/
+*.pyc

@@ -2,9 +2,30 @@
 
 ## Project status
 
-This repository is a **greenfield project** at the brainstorming stage. There is no source code, build system, tests, or established conventions yet. The repo currently contains only `README.md` and `todo.md` (a free-form notes file capturing the initial concept).
+This repository is a collection of **agent skill definitions** (markdown `SKILL.md` files plus small Python helper scripts) that automate the Azure DevOps PBI lifecycle and wrap the OpenSpec workflow. There is no build, test, or lint pipeline — the "code" is the skill prompts and their helpers.
 
-When asked to make changes, **first check whether the necessary scaffolding exists**. If it does not, propose a structure before generating files, rather than assuming one.
+When asked to make changes, first check whether the necessary scaffolding exists. If it does not, propose a structure before generating files, rather than assuming one.
+
+## Skill layout
+
+Every skill has one canonical folder and two host-discovery copies:
+
+| Path | Role |
+|---|---|
+| `skills/<name>/` | **Canonical source.** Edit only here. |
+| `.github/skills/<name>/` | Copy for GitHub Copilot CLI discovery. Do not edit. |
+| `.claude/skills/<name>/` | Copy for Claude Code discovery. Do not edit. |
+
+Each host copy of a `SKILL.md` carries a notice immediately after the YAML frontmatter pointing back at the canonical source.
+
+After any edit under `skills/<name>/`, regenerate the host copies before committing:
+
+```bash
+python scripts/sync-skills.py            # regenerate .github/skills/ and .claude/skills/
+python scripts/check-skill-sync.py       # verify no drift (exits non-zero on drift)
+```
+
+See [`scripts/README.md`](../scripts/README.md) for details.
 
 ## Project intent (from `todo.md`)
 

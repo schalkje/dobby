@@ -9,8 +9,6 @@ metadata:
   generatedBy: "1.3.1"
 ---
 
-<!-- This file is a copy of `skills/openspec-archive-change/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
-
 Archive a completed change in the experimental workflow.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

@@ -6,8 +6,6 @@ metadata:
   version: "1.6"
 ---
 
-<!-- This file is a copy of `skills/dobby-create-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
-
 Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
 
 **Input**: The user may provide any combination of: title, description, project, area path, iteration, parent work item (ID or keywords). Any missing required fields are collected interactively.

@@ -6,8 +6,6 @@ metadata:
   version: "1.0"
 ---
 
-<!-- This file is a copy of `skills/dobby-close-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
-
 Close a Product Backlog Item (PBI) in Azure DevOps with implementation evidence and a closing summary.
 
 **Input**: A PBI identifier — work item number, `AB#12345` reference, or a full Azure DevOps work item URL. Optionally, the user may provide a summary of what was done.
