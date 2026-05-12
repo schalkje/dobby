@@ -19,7 +19,10 @@
       "Bash(grep -v \"^archive$\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(openspec --version)",
+      "Bash(openspec new *)",
+      "Bash(openspec instructions *)"
     ]
   }
 }
