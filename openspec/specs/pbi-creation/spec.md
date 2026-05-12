@@ -1,4 +1,10 @@
-## ADDED Requirements
+# pbi-creation Specification
+
+## Purpose
+
+Define how the `dobby-create-pbi` skill creates Product Backlog Items in Azure DevOps from a conversational session. Covers prerequisite validation, interactive collection of missing fields, optional parent linking, invocation of the `az boards work-item create` CLI, and reporting of the resulting work item to the user.
+
+## Requirements
 
 ### Requirement: Skill creates a PBI in Azure DevOps
 The skill SHALL create a Product Backlog Item work item in the specified Azure DevOps project using the `az boards work-item create` CLI command.
