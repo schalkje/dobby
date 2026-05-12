@@ -17,7 +17,9 @@
       "Bash(echo \"---exit:$?---\")",
       "Bash(openspec spec *)",
       "Bash(grep -v \"^archive$\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
