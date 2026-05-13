@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /home/jeroen/repo/dobby status)",
+      "Bash(git -C /home/jeroen/repo/dobby log --oneline -20)",
+      "Bash(git -C /home/jeroen/repo/dobby diff --stat)",
+      "Bash(git -C /home/jeroen/repo/dobby diff .github/skills/dobby-create-pbi/SKILL.md)",
+      "Bash(python3 scripts/sync-skills.py)",
+      "Bash(python3 *)",
+      "Bash(command -v nodejs)",
+      "Read(//usr/bin/**)",
+      "Read(//home/jeroen/**)",
+      "Bash(openspec list *)",
+      "Bash(openspec status *)",
+      "Bash(openspec --help)",
+      "Bash(openspec validate *)",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(openspec spec *)",
+      "Bash(grep -v \"^archive$\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(openspec --version)",
+      "Bash(openspec new *)",
+      "Bash(openspec instructions *)",
+      "Bash(python scripts/migrate-dobby-config.py --dry-run)",
+      "Bash(cp -r skills/dobby-create-pbi skills/dobby-ado-create-pbi)",
+      "Bash(cp -r skills/dobby-close-pbi skills/dobby-ado-close-pbi)",
+      "Bash(cp -r skills/dobby-propose-from-pbi skills/dobby-ado-propose-from-pbi)",
+      "Bash(gh auth *)",
+      "Bash(echo \"---exit=$?\")",
+      "Bash(openspec archive *)"
+    ]
+  }
+}
