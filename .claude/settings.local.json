@@ -26,7 +26,10 @@
       "Bash(python scripts/migrate-dobby-config.py --dry-run)",
       "Bash(cp -r skills/dobby-create-pbi skills/dobby-ado-create-pbi)",
       "Bash(cp -r skills/dobby-close-pbi skills/dobby-ado-close-pbi)",
-      "Bash(cp -r skills/dobby-propose-from-pbi skills/dobby-ado-propose-from-pbi)"
+      "Bash(cp -r skills/dobby-propose-from-pbi skills/dobby-ado-propose-from-pbi)",
+      "Bash(gh auth *)",
+      "Bash(echo \"---exit=$?\")",
+      "Bash(openspec archive *)"
     ]
   }
 }

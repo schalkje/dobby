@@ -1,5 +1,11 @@
+# closing-evidence Specification
+
+## Purpose
+
+Define how the dobby skill chain posts implementation evidence (markdown summary plus before/after screenshots) on an Azure DevOps work item when the developer closes a PBI or task. Covers comment composition, image upload via the ADO Attachments API, and the interactive evidence-gathering flow. Applies to the ADO-backed closing chain — GitHub-backed projects use a different evidence vehicle (see `github-issue-closing`).
+## Requirements
 ### Requirement: Post closing evidence comment
-The system SHALL post a markdown-formatted comment on the Azure DevOps work item when a developer closes a PBI or task. The comment SHALL contain a structured summary of the change including text description and embedded images.
+The `dobby-ado-close-pbi` skill SHALL post a markdown-formatted comment on the Azure DevOps work item when a developer closes a PBI or task. The comment SHALL contain a structured summary of the change including text description and embedded images. This skill SHALL be invoked only by the `dobby-close-pbi` dispatcher when the project's active backend (per `.dobby/config.json`) is `"ado"`.
 
 #### Scenario: Close work item with text and screenshots
 - **WHEN** the developer initiates the close flow for a work item and provides a text description and one or more "after" screenshots
@@ -13,8 +19,12 @@ The system SHALL post a markdown-formatted comment on the Azure DevOps work item
 - **WHEN** the developer initiates the close flow and provides only a text description without screenshots
 - **THEN** the system SHALL post the markdown comment with the text description and no image sections
 
+#### Scenario: Dispatcher routes to this skill when backend is ADO
+- **WHEN** the user invokes `dobby-close-pbi` and `.dobby/config.json` has `backend: "ado"`
+- **THEN** the dispatcher SHALL Read `skills/dobby-ado-close-pbi/SKILL.md` and follow its instructions from the top with the user's request as input
+
 ### Requirement: Upload images to Azure DevOps
-The system SHALL upload evidence images to Azure DevOps using the Work Item Tracking Attachments API. The returned attachment URLs SHALL be used to embed images in the markdown comment.
+The `dobby-ado-close-pbi` skill SHALL upload evidence images to Azure DevOps using the Work Item Tracking Attachments API. The returned attachment URLs SHALL be used to embed images in the markdown comment. This requirement applies only when the active backend is `"ado"`; GitHub-backed projects use a different evidence vehicle (see `github-issue-closing`).
 
 #### Scenario: Successful image upload
 - **WHEN** the system uploads an image file to the Attachments API
@@ -25,14 +35,14 @@ The system SHALL upload evidence images to Azure DevOps using the Work Item Trac
 - **THEN** the system SHALL warn the developer and skip that image, continuing with remaining evidence
 
 ### Requirement: Structured markdown comment format
-The closing comment SHALL follow a consistent markdown template that includes: a header with the work item ID and title, a "What Changed" section, optional "Before" and "After" image sections, and optional developer notes.
+The closing comment posted by `dobby-ado-close-pbi` SHALL follow a consistent markdown template that includes: a header with the work item ID and title, a "What Changed" section, optional "Before" and "After" image sections, and optional developer notes.
 
 #### Scenario: Comment renders correctly in Azure DevOps
 - **WHEN** the closing comment is posted to the work item
 - **THEN** the comment SHALL render as formatted markdown in the Azure DevOps discussion thread with visible headings, text, and inline images
 
 ### Requirement: Interactive evidence gathering
-The system SHALL interactively prompt the developer to provide evidence during the closing flow. The developer SHALL be able to add a text description, attach screenshot files, and optionally add free-form notes.
+The `dobby-ado-close-pbi` skill SHALL interactively prompt the developer to provide evidence during the closing flow. The developer SHALL be able to add a text description, attach screenshot files, and optionally add free-form notes.
 
 #### Scenario: Developer is prompted for evidence
 - **WHEN** the developer triggers the close action on a work item
@@ -41,3 +51,4 @@ The system SHALL interactively prompt the developer to provide evidence during t
 #### Scenario: Developer cancels closing flow
 - **WHEN** the developer cancels during the evidence-gathering prompts
 - **THEN** the work item state SHALL NOT change and no comment SHALL be posted
+

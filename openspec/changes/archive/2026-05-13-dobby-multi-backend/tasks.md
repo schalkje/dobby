@@ -48,7 +48,7 @@
 ## 6. Smoke testing
 
 - [x] 6.1 In this repo (ADO-backed), run the migration script and confirm `.dobby/config.json` is produced with `backend: "ado"` and the existing org/project/team in the `ado` block
-- [ ] 6.2 Invoke `dobby-close-pbi` by intent ("close this") in Claude Code and confirm the dispatcher routes to `dobby-ado-close-pbi` and the flow behaves identically to today
+- [x] 6.2 Invoke `dobby-close-pbi` by intent ("close this") in Claude Code and confirm the dispatcher routes to `dobby-ado-close-pbi` and the flow behaves identically to today — verified live: `close this pbi` → `dobby-close-pbi` dispatcher fired → read `.dobby/config.json` (`backend: "ado"`) → routed to `dobby-ado-close-pbi`
 - [ ] 6.3 Invoke `dobby-close-pbi` by intent in Copilot CLI and confirm the same routing and behavior
 - [ ] 6.4 Invoke `/dobby-close-pbi` explicitly in Claude Code and confirm the dispatcher fires (not a backend skill directly)
 - [ ] 6.5 In a throwaway test directory, create a `.dobby/config.json` with `backend: "github"` and a test repo, invoke `dobby-create-pbi`, and verify the dispatcher routes to `dobby-gh-create-issue`
