@@ -22,7 +22,11 @@
       "Bash(git push *)",
       "Bash(openspec --version)",
       "Bash(openspec new *)",
-      "Bash(openspec instructions *)"
+      "Bash(openspec instructions *)",
+      "Bash(python scripts/migrate-dobby-config.py --dry-run)",
+      "Bash(cp -r skills/dobby-create-pbi skills/dobby-ado-create-pbi)",
+      "Bash(cp -r skills/dobby-close-pbi skills/dobby-ado-close-pbi)",
+      "Bash(cp -r skills/dobby-propose-from-pbi skills/dobby-ado-propose-from-pbi)"
     ]
   }
 }
