@@ -1,16 +1,83 @@
 ---
 name: dobby-ado-create-pbi
-description: Internal — creates a PBI in Azure DevOps. Invoked by dobby-create-pbi after backend resolution. Do not invoke directly unless forcing the ADO backend. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
+description: Internal — creates a PBI (or Feature, when hierarchy requires it) in Azure DevOps. Invoked by dobby-create-pbi after backend resolution. Do not invoke directly unless forcing the ADO backend. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
 metadata:
   author: dobby
-  version: "2.0"
+  version: "3.0"
 ---
 
-Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
+Create a Product Backlog Item (PBI) — and when needed, a parent Feature — in Azure DevOps from a conversational request.
 
 This skill is the **Azure DevOps implementation** invoked by the `dobby-create-pbi` dispatcher after it resolves `backend: "ado"` from `.dobby/config.json`. Direct invocation is supported as an escape hatch.
 
 **Input**: The user may provide any combination of: title, description, project, area path, iteration, parent work item (ID or keywords). Any missing required fields are collected interactively.
+
+## ⛔ Critical Rules (read before every run)
+
+These rules prevent the most common and costly mistakes. Violating any one produces broken work items that require manual cleanup.
+
+1. **NEVER use `--description` on `az boards work-item create` or `az boards work-item update`.** It truncates at the first newline. Always use the helper script (`azdo-update-fields.py`) for `System.Description` and `Microsoft.VSTS.Common.AcceptanceCriteria`.
+2. **NEVER use `--parent` on PBI or Feature creation.** The `--parent` flag only works for `--type Task`. For PBIs and Features, create the item first, then link with: `az boards work-item relation add --id <new-id> --relation-type parent --target-id <parent-id>`.
+3. **NEVER create a PBI under another PBI.** ADO hierarchy is strict — see the hierarchy section below. A PBI's parent must be a Feature.
+4. **Always create items as `--type "Product Backlog Item"`.** Do not use `--type Task` unless explicitly creating a Task (a sub-work-item of a PBI).
+5. **Always use the helper script for multiline fields** — both on create and on update. `az boards` cannot set markdown format.
+
+## ADO Work Item Hierarchy
+
+In this project/process, Azure DevOps enforces a strict parent-child hierarchy:
+
+```
+Epic → Feature → Product Backlog Item (PBI) → Task
+```
+
+**Rules:**
+
+| Child type | Valid parent type | Invalid parent types |
+|---|---|---|
+| Task | PBI | Feature, Epic, Task, another PBI |
+| PBI | Feature | PBI, Epic, Task |
+| Feature | Epic (or no parent) | Feature, PBI, Task |
+
+**Consequences of violating hierarchy:**
+- ADO may accept the link but reports, boards, and backlog views will break or hide items.
+- Sprint planning, velocity tracking, and rollup calculations depend on correct hierarchy.
+
+### Starting from an Existing Work Item
+
+When the user references an existing work item (e.g., "create PBIs under #1013607"), **always inspect it before creating children**:
+
+```bash
+az boards work-item show --id <id> --expand Relations --organization "<org-url>" --output json
+```
+
+Extract:
+- **Type**: `fields["System.WorkItemType"]`
+- **Parent**: find the relation with `rel: "System.LinkTypes.Hierarchy-Reverse"` — the parent ID is the last segment of its `url` field
+
+Then use this decision table:
+
+| Existing item type | User wants | Action |
+|---|---|---|
+| **Feature** | child PBIs | ✅ Create PBIs under this Feature |
+| **PBI** with Feature parent | sibling PBIs | ✅ Create PBIs under the same parent Feature |
+| **PBI** without Feature parent | multiple PBIs | 🔨 Create a new Feature first, move original PBI under it, then create sibling PBIs |
+| **PBI** without Feature parent | single PBI | 🔨 Create a new Feature, parent both PBIs under it |
+| **Task** | PBIs | Navigate up: use the Task's parent PBI's parent Feature. Create PBIs there. |
+| **Epic** | PBIs | Create a Feature under the Epic, then PBIs under the Feature |
+
+**When you need to create a Feature** (see the "Creating a Feature" section below for the full workflow):
+1. Create the Feature work item
+2. Link it to the appropriate parent (Epic, if one exists in the chain)
+3. If an existing PBI needs to become a child of the new Feature, re-parent it:
+   ```bash
+   # If the PBI had an old parent, remove that link first:
+   az boards work-item relation remove --id <pbi-id> --relation-type parent --target-id <old-parent-id> --yes --organization "<org-url>"
+   # Then add the new Feature as parent:
+   az boards work-item relation add --id <pbi-id> --relation-type parent --target-id <feature-id> --organization "<org-url>"
+   ```
+4. Then create the new PBIs under the Feature
+
+**Always confirm the proposed hierarchy with the user** via `ask_user` before creating work items. Show the planned structure.
 
 ## Defaults
 
@@ -147,14 +214,29 @@ If the user provides enough context, generate both fields from their input. If n
   - If NOT found, show the **most recent and upcoming** iterations (not archived ones). Filter to show only iterations from the last 3 months and forward.
   - Also allow free-text entry.
 
-**3e. Parent work item** (optional)
-- If the user provided a numeric parent ID, use it directly.
+**3e. Parent work item** (optional but validated)
+
+**⚠️ Always validate the parent's type before using it.** A PBI's parent MUST be a Feature. If the user provides a parent that is not a Feature, follow the hierarchy decision table above.
+
+- If the user provided a numeric parent ID:
+  1. **Fetch and inspect** the work item type:
+     ```bash
+     az boards work-item show --id <id> --expand Relations --organization "<org-url>" --output json
+     ```
+  2. If it is a **Feature** → use it as parent. ✅
+  3. If it is a **PBI** → follow the hierarchy decision table (create a Feature, re-parent, etc.).
+  4. If it is an **Epic** → create a Feature under the Epic first, then use the Feature as parent.
+  5. If it is a **Task** → navigate up: find the Task's PBI parent, then its Feature grandparent. Use the Feature.
+  6. **Always confirm** the resolved parent with the user before proceeding.
+
 - If the user provided keywords:
   ```bash
   az boards query --wiql "SELECT [System.Id], [System.Title], [System.WorkItemType] FROM WorkItems WHERE ([System.WorkItemType] = 'Feature' OR [System.WorkItemType] = 'Epic') AND [System.Title] CONTAINS '<keywords>'" --project "<project-name>" --organization "<org-url>" --output json
   ```
   - Present matches and ask user to confirm.
+
 - If the user did not mention a parent: ask whether to create without a parent or search for one.
+  - If creating without a parent and this is one of multiple PBIs being created → a Feature parent is strongly recommended. Propose creating one.
 
 ### 4. Confirm Before Creation
 
@@ -175,17 +257,44 @@ Proceed? (or tell me what to change)
 
 Ask the user to confirm or edit. Keep this lightweight — a simple "yes" should suffice.
 
-### 5. Create the PBI
+### 5. Create the Work Item(s)
 
-PBI creation uses a **two-step process**: create with `az boards`, then update Description and Acceptance Criteria via the helper script to set **markdown format**.
+Work item creation uses a **two-step process**: create with `az boards` (basic fields only), then update Description and Acceptance Criteria via the helper script to set **markdown format**.
 
 The `az boards` CLI does not support multiline markdown fields — it truncates content at newlines and cannot set the field format to markdown. The helper script `scripts/azdo-update-fields.py` handles this via the REST API.
 
-**5a. Create the work item (basic fields only)**
+> ⛔ **NEVER** pass `--description` to `az boards work-item create` or `az boards work-item update`. It truncates at the first newline. Use the helper script for ALL multiline fields.
+>
+> ⛔ **NEVER** pass `--parent` for PBI or Feature creation. It only works for `--type Task`. Use `az boards work-item relation add` after creation.
+
+**5a. Create a Feature (if hierarchy requires it)**
+
+If the hierarchy decision table (Step 3e / "Starting from an Existing Work Item") determined that a Feature is needed:
+
 ```bash
-az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --query "[id]" --output table
+az boards work-item create --title "<feature-title>" --type "Feature" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --output json
 ```
-- Do **not** pass `--description` here — it will be set via the helper script in step 5b.
+
+- Extract the Feature `id` from the output.
+- Do **not** pass `--description` — set it via the helper script in step 5c.
+- If the Feature should have an Epic parent, link it:
+  ```bash
+  az boards work-item relation add --id <feature-id> --relation-type "parent" --target-id <epic-id> --organization "<org-url>" --output json
+  ```
+- If an existing PBI needs to move under this Feature, re-parent it (see "Other update operations" below).
+
+**Feature description** follows a lighter template than PBI — see `templates/feature-template.md`:
+- Outcome / business value statement
+- Scope summary
+- Child PBI list with links
+- No user story format or Given/When/Then AC — those belong on PBIs
+
+**5b. Create the PBI (basic fields only)**
+```bash
+az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --output json
+```
+- Do **not** pass `--description` here — it will be set via the helper script in step 5c.
+- Do **not** pass `--parent` here — it will be linked in step 5d.
 - Extract the work item `id` from the output.
 
 **Error handling:**
@@ -194,7 +303,7 @@ az boards work-item create --title "<title>" --type "Product Backlog Item" --pro
 - Work item type not found → "This project may use a different process template (e.g., 'User Story' for Agile). Check project settings."
 - Do **not** retry creation automatically to avoid duplicates.
 
-**5b. Set Description and Acceptance Criteria as Markdown**
+**5c. Set Description and Acceptance Criteria as Markdown**
 
 Write the markdown content to temporary files, then run the helper script:
 
@@ -223,10 +332,14 @@ The script:
 
 Clean up temporary files after successful update.
 
-**5c. Link parent (if specified)**
+**5d. Link parent (if specified)**
+
+> ⚠️ Remember: `--parent` only works for Task creation. For PBI and Feature, always use `relation add`.
+
 ```bash
-az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --target-id <parent-id> --organization "<org-url>" --output json
+az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --target-id <parent-feature-id> --organization "<org-url>" --output json
 ```
+- **Verify** the parent is a Feature (for PBIs) or an Epic (for Features). Do not link PBI → PBI.
 - If linking fails:
   - **Do not** delete or re-create the PBI.
   - Show partial-success:
@@ -292,7 +405,12 @@ If yes, update `.dobby/config.json` so the `ado` block contains the current valu
 ## Guardrails
 
 - Always show the logged-in identity early so the user can catch wrong-account issues before wasting time
-- Trust user-provided field values — don't validate them against listings before attempting creation
+- **Always validate parent work item type** — a PBI's parent must be a Feature, never another PBI
+- **Always inspect existing items** before creating children — use `--expand Relations` to see the parent chain
+- **Never use `--description`** on create or update — always use the helper script for multiline fields
+- **Never use `--parent`** for PBI or Feature creation — only works for Tasks; use `relation add` instead
+- **Always create PBIs as `Product Backlog Item`** — never as `Task` (unless explicitly creating a Task)
+- Trust user-provided field values for area/iteration — don't validate them against listings before attempting creation
 - Skip prompts for fields already provided in the request
 - Batch missing-field prompts into as few interactions as possible
 - Never assume team name — always discover via `az devops team list`
@@ -335,19 +453,29 @@ After any update, re-fetch with `az boards work-item show --id <id> --output jso
 
 ## When to Split into a Feature + Multiple PBIs
 
-If the user's request expands beyond what one PBI can reasonably hold, consider proposing a split. Heuristics:
+In this project/process, **when creating multiple related PBIs, always group them under a Feature**. Do not create PBIs under another PBI — that violates ADO hierarchy.
 
-- **1–3 child items**: stay flat — create the PBIs as siblings under the existing parent.
-- **>3 child items, or a clear multi-phase deliverable**: propose a **new sub-Feature** (parented to the existing parent feature) containing the PBIs. Naming convention used in this repo: `"<Project> - <Feature Name>"` (e.g., `"CDM Editor - Tabbed Workspace"`).
-- **Mixed scope (some clarification of an existing PBI + new follow-ups)**: refine the existing PBI in place AND create new sibling PBIs for follow-ups; link with Predecessor/Successor where order matters.
+### Decision rules
 
-Always confirm the proposed split with the user via `ask_user` before creating any work items. Show the proposed hierarchy and dependency order. Once confirmed:
+| Scenario | Action |
+|---|---|
+| **1 PBI, existing Feature parent** | Create PBI under the Feature |
+| **1 PBI, no Feature parent** | Create under existing Feature if one fits, or create standalone |
+| **2–3 related PBIs** | Ensure a Feature parent exists; create PBIs as siblings under it |
+| **>3 PBIs, or a clear multi-phase deliverable** | Create a new Feature (name: `"<Product> - <Feature Name>"`), parent all PBIs under it |
+| **User references an existing PBI** | Inspect its parent chain. If no Feature exists above it, create one and re-parent the existing PBI under it |
+| **Mixed scope (refine existing + add new)** | Refine the existing PBI in place, create new sibling PBIs under the same Feature; link with Predecessor/Successor where order matters |
 
-1. Create the Feature (if needed) and link to its parent.
-2. Update the existing PBI (if its scope is being refined) — use the helper script for any markdown content.
-3. Create the new PBIs — use the helper script for description and AC.
-4. Link order via Predecessor/Successor relations.
-5. In each work item's description, reference siblings/dependencies as full markdown links (`[#NNNN](url)`) — see "Markdown Gotchas" section.
+### Execution order
+
+Always confirm the proposed hierarchy with the user via `ask_user` before creating any work items. Show the planned structure. Once confirmed:
+
+1. **Create the Feature** (if needed) — use the two-step process (create + helper script for markdown fields). Link to parent Epic if one exists.
+2. **Re-parent existing items** if they need to move under the new Feature.
+3. **Create the new PBIs** — use the two-step process for each. Link to Feature as parent.
+4. **Link order** via Predecessor/Successor relations where implementation sequence matters.
+5. **Cross-reference**: in each work item's description, reference siblings/dependencies as full markdown links (`[#NNNN](url)`) — see "Markdown Gotchas" section.
+6. **Update the Feature description** to list all child PBIs with links and suggested implementation order.
 
 ## Usage Examples
 
