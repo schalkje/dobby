@@ -6,6 +6,8 @@ metadata:
   version: "1.0"
 ---
 
+<!-- This file is a copy of `skills/dobby-ado-update-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
+
 Update or refine an existing work item (PBI, Bug, or Feature) in Azure DevOps.
 
 This skill is the **Azure DevOps implementation** invoked by the `dobby-update-pbi` dispatcher after it resolves `backend: "ado"` from `.dobby/config.json`. Direct invocation is supported as an escape hatch.

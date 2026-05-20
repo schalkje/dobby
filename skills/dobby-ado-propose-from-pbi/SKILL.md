@@ -341,6 +341,16 @@ If not already on a feature/fix branch:
 - Use `--output json` on all `az` commands for reliable parsing.
 - Include `--organization` on all commands unless a confirmed default exists.
 
+## Optional Quality Gate
+
+After successful proposal generation, suggest:
+
+> **Optional quality gates before implementation:**
+> - Run `grill-proposal` to challenge the scope, goals, and feasibility of the proposal.
+> - Run `grill-design` to stress-test the architecture, trade-offs, and implementation risks.
+
+Do not invoke these automatically — only suggest them. The user decides whether to grill.
+
 ## Usage Examples
 
 **By PBI number:**

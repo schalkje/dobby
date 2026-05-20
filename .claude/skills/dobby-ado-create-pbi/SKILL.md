@@ -1,18 +1,87 @@
 ---
 name: dobby-ado-create-pbi
-description: Internal — creates a PBI in Azure DevOps. Invoked by dobby-create-pbi after backend resolution. Do not invoke directly unless forcing the ADO backend. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
+description: Internal — creates a PBI (or Feature, when hierarchy requires it) in Azure DevOps. Invoked by dobby-create-pbi after backend resolution. Do not invoke directly unless forcing the ADO backend. Collects fields interactively, validates prerequisites, and creates the work item via the az boards CLI.
 metadata:
   author: dobby
-  version: "2.0"
+  version: "3.0"
 ---
 
 <!-- This file is a copy of `skills/dobby-ado-create-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
 
-Create a Product Backlog Item (PBI) in Azure DevOps from a conversational request.
+Create a Product Backlog Item (PBI) — and when needed, a parent Feature — in Azure DevOps from a conversational request.
 
 This skill is the **Azure DevOps implementation** invoked by the `dobby-create-pbi` dispatcher after it resolves `backend: "ado"` from `.dobby/config.json`. Direct invocation is supported as an escape hatch.
 
 **Input**: The user may provide any combination of: title, description, project, area path, iteration, parent work item (ID or keywords). Any missing required fields are collected interactively.
+
+## ⛔ Critical Rules (read before every run)
+
+These rules prevent the most common and costly mistakes. Violating any one produces broken work items that require manual cleanup.
+
+1. **NEVER use `--description` on `az boards work-item create` or `az boards work-item update`.** It truncates at the first newline. Always use the helper script (`azdo-update-fields.py`) for `System.Description` and `Microsoft.VSTS.Common.AcceptanceCriteria`.
+2. **NEVER write HTML in description or acceptance criteria fields.** Content must be **Markdown** — not HTML. No `<b>`, `<br>`, `<ul>`, `<li>` tags. Use markdown syntax: `**bold**`, line breaks, `- list items`. The helper script sets the field format to Markdown; HTML content in a Markdown-formatted field renders as raw escaped tags.
+3. **ALWAYS follow the template** when generating description and acceptance criteria. PBIs use `templates/pbi-template.md`; Features use `templates/feature-template.md`. Do not invent ad-hoc formats.
+4. **NEVER use `--parent` on PBI or Feature creation.** The `--parent` flag only works for `--type Task`. For PBIs and Features, create the item first, then link with: `az boards work-item relation add --id <new-id> --relation-type parent --target-id <parent-id>`.
+5. **NEVER create a PBI under another PBI.** ADO hierarchy is strict — see the hierarchy section below. A PBI's parent must be a Feature.
+6. **Always create items as `--type "Product Backlog Item"`.** Do not use `--type Task` unless explicitly creating a Task (a sub-work-item of a PBI).
+7. **Always use the helper script for multiline fields** — both on create and on update. `az boards` cannot set markdown format.
+
+## ADO Work Item Hierarchy
+
+In this project/process, Azure DevOps enforces a strict parent-child hierarchy:
+
+```
+Epic → Feature → Product Backlog Item (PBI) → Task
+```
+
+**Rules:**
+
+| Child type | Valid parent type | Invalid parent types |
+|---|---|---|
+| Task | PBI | Feature, Epic, Task, another PBI |
+| PBI | Feature | PBI, Epic, Task |
+| Feature | Epic (or no parent) | Feature, PBI, Task |
+
+**Consequences of violating hierarchy:**
+- ADO may accept the link but reports, boards, and backlog views will break or hide items.
+- Sprint planning, velocity tracking, and rollup calculations depend on correct hierarchy.
+
+### Starting from an Existing Work Item
+
+When the user references an existing work item (e.g., "create PBIs under #1013607"), **always inspect it before creating children**:
+
+```bash
+az boards work-item show --id <id> --expand Relations --organization "<org-url>" --output json
+```
+
+Extract:
+- **Type**: `fields["System.WorkItemType"]`
+- **Parent**: find the relation with `rel: "System.LinkTypes.Hierarchy-Reverse"` — the parent ID is the last segment of its `url` field
+
+Then use this decision table:
+
+| Existing item type | User wants | Action |
+|---|---|---|
+| **Feature** | child PBIs | ✅ Create PBIs under this Feature |
+| **PBI** with Feature parent | sibling PBIs | ✅ Create PBIs under the same parent Feature |
+| **PBI** without Feature parent | multiple PBIs | 🔨 Create a new Feature first, move original PBI under it, then create sibling PBIs |
+| **PBI** without Feature parent | single PBI | 🔨 Create a new Feature, parent both PBIs under it |
+| **Task** | PBIs | Navigate up: use the Task's parent PBI's parent Feature. Create PBIs there. |
+| **Epic** | PBIs | Create a Feature under the Epic, then PBIs under the Feature |
+
+**When you need to create a Feature** (see the "Creating a Feature" section below for the full workflow):
+1. Create the Feature work item
+2. Link it to the appropriate parent (Epic, if one exists in the chain)
+3. If an existing PBI needs to become a child of the new Feature, re-parent it:
+   ```bash
+   # If the PBI had an old parent, remove that link first:
+   az boards work-item relation remove --id <pbi-id> --relation-type parent --target-id <old-parent-id> --yes --organization "<org-url>"
+   # Then add the new Feature as parent:
+   az boards work-item relation add --id <pbi-id> --relation-type parent --target-id <feature-id> --organization "<org-url>"
+   ```
+4. Then create the new PBIs under the Feature
+
+**Always confirm the proposed hierarchy with the user** via `ask_user` before creating work items. Show the planned structure.
 
 ## Defaults
 
@@ -112,6 +181,10 @@ Collect all missing fields in a single prompt where possible (batch into one ask
 
 **3b. Description and Acceptance Criteria** (optional but recommended)
 
+> ⚠️ **All content must be Markdown — never HTML.** Do not use `<b>`, `<br>`, `<ul>`, `<li>`, or any HTML tags. Use standard markdown: `**bold**`, `---` for horizontal rules, `- item` for lists, blank lines for paragraphs.
+
+> ⚠️ **Always follow the template structure.** Read the template file first, then populate each section. Do not invent an ad-hoc format.
+
 Generate content following the template in `skills/dobby-ado-create-pbi/templates/pbi-template.md`. The template defines two Azure DevOps fields, both stored as **Markdown**:
 
 **Description** (`System.Description`) — populate with:
@@ -128,6 +201,8 @@ Generate content following the template in `skills/dobby-ado-create-pbi/template
 Do **not** include headings like `## 📝 Description` or `## ✔️ Acceptance Criteria` — the field name in Azure DevOps already serves that purpose.
 
 If the user provides enough context, generate both fields from their input. If not, ask if they want to add details.
+
+**For Features**, use `templates/feature-template.md` instead. Features have a lighter description (outcome, scope, child PBI list) and do NOT use acceptance criteria.
 
 **3c. Area path**
 - If the user provided an area path, **trust it** — do not validate against a listing first. Just use it in the create command. If creation fails due to invalid path, then re-prompt.
@@ -149,14 +224,29 @@ If the user provides enough context, generate both fields from their input. If n
   - If NOT found, show the **most recent and upcoming** iterations (not archived ones). Filter to show only iterations from the last 3 months and forward.
   - Also allow free-text entry.
 
-**3e. Parent work item** (optional)
-- If the user provided a numeric parent ID, use it directly.
+**3e. Parent work item** (optional but validated)
+
+**⚠️ Always validate the parent's type before using it.** A PBI's parent MUST be a Feature. If the user provides a parent that is not a Feature, follow the hierarchy decision table above.
+
+- If the user provided a numeric parent ID:
+  1. **Fetch and inspect** the work item type:
+     ```bash
+     az boards work-item show --id <id> --expand Relations --organization "<org-url>" --output json
+     ```
+  2. If it is a **Feature** → use it as parent. ✅
+  3. If it is a **PBI** → follow the hierarchy decision table (create a Feature, re-parent, etc.).
+  4. If it is an **Epic** → create a Feature under the Epic first, then use the Feature as parent.
+  5. If it is a **Task** → navigate up: find the Task's PBI parent, then its Feature grandparent. Use the Feature.
+  6. **Always confirm** the resolved parent with the user before proceeding.
+
 - If the user provided keywords:
   ```bash
   az boards query --wiql "SELECT [System.Id], [System.Title], [System.WorkItemType] FROM WorkItems WHERE ([System.WorkItemType] = 'Feature' OR [System.WorkItemType] = 'Epic') AND [System.Title] CONTAINS '<keywords>'" --project "<project-name>" --organization "<org-url>" --output json
   ```
   - Present matches and ask user to confirm.
+
 - If the user did not mention a parent: ask whether to create without a parent or search for one.
+  - If creating without a parent and this is one of multiple PBIs being created → a Feature parent is strongly recommended. Propose creating one.
 
 ### 4. Confirm Before Creation
 
@@ -177,17 +267,44 @@ Proceed? (or tell me what to change)
 
 Ask the user to confirm or edit. Keep this lightweight — a simple "yes" should suffice.
 
-### 5. Create the PBI
+### 5. Create the Work Item(s)
 
-PBI creation uses a **two-step process**: create with `az boards`, then update Description and Acceptance Criteria via the helper script to set **markdown format**.
+Work item creation uses a **two-step process**: create with `az boards` (basic fields only), then update Description and Acceptance Criteria via the helper script to set **markdown format**.
 
 The `az boards` CLI does not support multiline markdown fields — it truncates content at newlines and cannot set the field format to markdown. The helper script `scripts/azdo-update-fields.py` handles this via the REST API.
 
-**5a. Create the work item (basic fields only)**
+> ⛔ **NEVER** pass `--description` to `az boards work-item create` or `az boards work-item update`. It truncates at the first newline. Use the helper script for ALL multiline fields.
+>
+> ⛔ **NEVER** pass `--parent` for PBI or Feature creation. It only works for `--type Task`. Use `az boards work-item relation add` after creation.
+
+**5a. Create a Feature (if hierarchy requires it)**
+
+If the hierarchy decision table (Step 3e / "Starting from an Existing Work Item") determined that a Feature is needed:
+
 ```bash
-az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --query "[id]" --output table
+az boards work-item create --title "<feature-title>" --type "Feature" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --output json
 ```
-- Do **not** pass `--description` here — it will be set via the helper script in step 5b.
+
+- Extract the Feature `id` from the output.
+- Do **not** pass `--description` — set it via the helper script in step 5c.
+- If the Feature should have an Epic parent, link it:
+  ```bash
+  az boards work-item relation add --id <feature-id> --relation-type "parent" --target-id <epic-id> --organization "<org-url>" --output json
+  ```
+- If an existing PBI needs to move under this Feature, re-parent it (see "Other update operations" below).
+
+**Feature description** follows a lighter template than PBI — see `templates/feature-template.md`:
+- Outcome / business value statement
+- Scope summary
+- Child PBI list with links
+- No user story format or Given/When/Then AC — those belong on PBIs
+
+**5b. Create the PBI (basic fields only)**
+```bash
+az boards work-item create --title "<title>" --type "Product Backlog Item" --project "<project-name>" --area "<area-path>" --iteration "<iteration-path>" --organization "<org-url>" --output json
+```
+- Do **not** pass `--description` here — it will be set via the helper script in step 5c.
+- Do **not** pass `--parent` here — it will be linked in step 5d.
 - Extract the work item `id` from the output.
 
 **Error handling:**
@@ -196,7 +313,7 @@ az boards work-item create --title "<title>" --type "Product Backlog Item" --pro
 - Work item type not found → "This project may use a different process template (e.g., 'User Story' for Agile). Check project settings."
 - Do **not** retry creation automatically to avoid duplicates.
 
-**5b. Set Description and Acceptance Criteria as Markdown**
+**5c. Set Description and Acceptance Criteria as Markdown**
 
 Write the markdown content to temporary files, then run the helper script:
 
@@ -225,10 +342,14 @@ The script:
 
 Clean up temporary files after successful update.
 
-**5c. Link parent (if specified)**
+**5d. Link parent (if specified)**
+
+> ⚠️ Remember: `--parent` only works for Task creation. For PBI and Feature, always use `relation add`.
+
 ```bash
-az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --target-id <parent-id> --organization "<org-url>" --output json
+az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --target-id <parent-feature-id> --organization "<org-url>" --output json
 ```
+- **Verify** the parent is a Feature (for PBIs) or an Epic (for Features). Do not link PBI → PBI.
 - If linking fails:
   - **Do not** delete or re-create the PBI.
   - Show partial-success:
@@ -252,18 +373,22 @@ az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --ta
 
 When generating markdown content for `System.Description` or `Microsoft.VSTS.Common.AcceptanceCriteria`, follow these rules — they are non-obvious failure modes that produce broken-looking content in ADO:
 
-1. **`#NNNN` does NOT autolink in rendered markdown.** Azure DevOps autolinks `#NNNN` in plain-text comments, but in **markdown-formatted description / AC fields it does not**. Always use a full link:
+1. **Content must be Markdown, never HTML.** Do not use `<b>`, `<br>`, `<ul>`, `<li>`, `<div>`, or any HTML tags. When the helper script sets the field format to Markdown, any HTML tags will render as raw escaped text (e.g., users see literal `<b>Goal:</b>` instead of **Goal:**). Use markdown: `**bold**`, `- list items`, blank lines for paragraphs, `---` for horizontal rules.
+   - ❌ `<b>Goal:</b><br><ul><li>Item one</li></ul>`
+   - ✅ `**Goal:**\n\n- Item one`
+
+2. **`#NNNN` does NOT autolink in rendered markdown.** Azure DevOps autolinks `#NNNN` in plain-text comments, but in **markdown-formatted description / AC fields it does not**. Always use a full link:
    - ❌ `See #1021105 for the foundation.`
    - ✅ `See [#1021105](https://dev.azure.com/<org>/<project>/_workitems/edit/1021105) for the foundation.`
    - This applies in tables, bullet lists, and prose. Apply it to **every** work item reference, including the parent and any sibling/dependency references.
 
-2. **Code blocks suppress markdown link rendering.** ASCII diagrams or fenced code blocks hide any `[text](url)` links inside. If you want a hierarchy or order diagram with clickable links, use a **markdown bullet tree** instead of a code block:
+3. **Code blocks suppress markdown link rendering.** ASCII diagrams or fenced code blocks hide any `[text](url)` links inside. If you want a hierarchy or order diagram with clickable links, use a **markdown bullet tree** instead of a code block:
    - ❌ ```\n#1021105 → #1021174\n```  (links won't render)
    - ✅ Bulleted tree with explicit `[#NNNN](url)` per node
 
-3. **Field format defaults to HTML.** When updating fields via `az boards work-item update --fields "..."` or via raw REST `PATCH` without setting `multilineFieldsFormat`, ADO renders the content as HTML — escaping markdown syntax. **Always use the helper script** (which sets format = Markdown) for any multiline field write — both on create and on update.
+4. **Field format defaults to HTML.** When updating fields via `az boards work-item update --fields "..."` or via raw REST `PATCH` without setting `multilineFieldsFormat`, ADO renders the content as HTML — escaping markdown syntax. **Always use the helper script** (which sets format = Markdown) for any multiline field write — both on create and on update.
 
-4. **`az boards work-item update --description "..."` truncates at the first newline.** The same limitation that applies to `create`. Never use it for multiline content. Use the helper script instead.
+5. **`az boards work-item update --description "..."` truncates at the first newline.** The same limitation that applies to `create`. Never use it for multiline content. Use the helper script instead.
 
 ### 7. Save Defaults
 
@@ -294,7 +419,12 @@ If yes, update `.dobby/config.json` so the `ado` block contains the current valu
 ## Guardrails
 
 - Always show the logged-in identity early so the user can catch wrong-account issues before wasting time
-- Trust user-provided field values — don't validate them against listings before attempting creation
+- **Always validate parent work item type** — a PBI's parent must be a Feature, never another PBI
+- **Always inspect existing items** before creating children — use `--expand Relations` to see the parent chain
+- **Never use `--description`** on create or update — always use the helper script for multiline fields
+- **Never use `--parent`** for PBI or Feature creation — only works for Tasks; use `relation add` instead
+- **Always create PBIs as `Product Backlog Item`** — never as `Task` (unless explicitly creating a Task)
+- Trust user-provided field values for area/iteration — don't validate them against listings before attempting creation
 - Skip prompts for fields already provided in the request
 - Batch missing-field prompts into as few interactions as possible
 - Never assume team name — always discover via `az devops team list`
@@ -337,19 +467,29 @@ After any update, re-fetch with `az boards work-item show --id <id> --output jso
 
 ## When to Split into a Feature + Multiple PBIs
 
-If the user's request expands beyond what one PBI can reasonably hold, consider proposing a split. Heuristics:
+In this project/process, **when creating multiple related PBIs, always group them under a Feature**. Do not create PBIs under another PBI — that violates ADO hierarchy.
 
-- **1–3 child items**: stay flat — create the PBIs as siblings under the existing parent.
-- **>3 child items, or a clear multi-phase deliverable**: propose a **new sub-Feature** (parented to the existing parent feature) containing the PBIs. Naming convention used in this repo: `"<Project> - <Feature Name>"` (e.g., `"CDM Editor - Tabbed Workspace"`).
-- **Mixed scope (some clarification of an existing PBI + new follow-ups)**: refine the existing PBI in place AND create new sibling PBIs for follow-ups; link with Predecessor/Successor where order matters.
+### Decision rules
 
-Always confirm the proposed split with the user via `ask_user` before creating any work items. Show the proposed hierarchy and dependency order. Once confirmed:
+| Scenario | Action |
+|---|---|
+| **1 PBI, existing Feature parent** | Create PBI under the Feature |
+| **1 PBI, no Feature parent** | Create under existing Feature if one fits, or create standalone |
+| **2–3 related PBIs** | Ensure a Feature parent exists; create PBIs as siblings under it |
+| **>3 PBIs, or a clear multi-phase deliverable** | Create a new Feature (name: `"<Product> - <Feature Name>"`), parent all PBIs under it |
+| **User references an existing PBI** | Inspect its parent chain. If no Feature exists above it, create one and re-parent the existing PBI under it |
+| **Mixed scope (refine existing + add new)** | Refine the existing PBI in place, create new sibling PBIs under the same Feature; link with Predecessor/Successor where order matters |
 
-1. Create the Feature (if needed) and link to its parent.
-2. Update the existing PBI (if its scope is being refined) — use the helper script for any markdown content.
-3. Create the new PBIs — use the helper script for description and AC.
-4. Link order via Predecessor/Successor relations.
-5. In each work item's description, reference siblings/dependencies as full markdown links (`[#NNNN](url)`) — see "Markdown Gotchas" section.
+### Execution order
+
+Always confirm the proposed hierarchy with the user via `ask_user` before creating any work items. Show the planned structure. Once confirmed:
+
+1. **Create the Feature** (if needed) — use the two-step process (create + helper script for markdown fields). Link to parent Epic if one exists.
+2. **Re-parent existing items** if they need to move under the new Feature.
+3. **Create the new PBIs** — use the two-step process for each. Link to Feature as parent.
+4. **Link order** via Predecessor/Successor relations where implementation sequence matters.
+5. **Cross-reference**: in each work item's description, reference siblings/dependencies as full markdown links (`[#NNNN](url)`) — see "Markdown Gotchas" section.
+6. **Update the Feature description** to list all child PBIs with links and suggested implementation order.
 
 ## Usage Examples
 
@@ -361,3 +501,98 @@ Always confirm the proposed split with the user via `ask_user` before creating a
 
 **From an email or description:**
 > Create a PBI from this: "We need to add a dark mode toggle to the settings page. Users have been requesting this for a while."
+
+---
+
+## Creating or Refining a Bug
+
+Bugs follow the same two-step process as PBIs (create with `az boards`, then update multiline fields via helper script), but use **different fields and a different template**.
+
+### Bug Fields (vs PBI)
+
+| Field | ADO Reference | Purpose | Template section |
+|---|---|---|---|
+| Repro Steps | `Microsoft.VSTS.TCM.ReproSteps` | **Primary** content — summary, steps, expected/actual, root cause | First section of `bug-template.md` |
+| Description | `System.Description` | **Secondary** — context, environment, related items | Second section of `bug-template.md` |
+| Acceptance Criteria | `Microsoft.VSTS.Common.AcceptanceCriteria` | When is the fix verified? | Third section of `bug-template.md` |
+| Severity | `Microsoft.VSTS.Common.Severity` | `1 - Critical`, `2 - High`, `3 - Medium`, `4 - Low` | Set via `az boards` `--fields` |
+| Priority | `Microsoft.VSTS.Common.Priority` | 1–4 | Set via `az boards` `--fields` |
+
+> ⚠️ For PBIs, the primary content field is `System.Description`. For Bugs, the primary content field is `Microsoft.VSTS.TCM.ReproSteps` — this is what appears prominently in the ADO Bug form.
+
+### Bug Template
+
+Use `templates/bug-template.md` when generating content. The template has three sections separated by HTML comments, mapping to the three multiline fields above. Key differences from the PBI template:
+
+- No user story format (`As a… I want… so that…`)
+- Repro Steps is the primary field (includes Summary, Current/Expected Behavior, Steps to Reproduce, Design Reference, Root Cause, Fix Direction)
+- Description is secondary (brief context, related items)
+- Acceptance Criteria focus on verifying the fix and preventing regression
+
+### Creating a Bug
+
+```bash
+# Step 1: Create the Bug (basic fields only)
+az boards work-item create \
+    --title "<title>" \
+    --type "Bug" \
+    --project "<project-name>" \
+    --area "<area-path>" \
+    --iteration "<iteration-path>" \
+    --organization "<org-url>" \
+    --fields "Microsoft.VSTS.Common.Severity=3 - Medium" "Microsoft.VSTS.Common.Priority=2" \
+    --output json
+
+# Step 2: Set multiline fields as Markdown via helper script
+python skills/dobby-ado-create-pbi/scripts/azdo-update-fields.py \
+    --work-item-id <id> \
+    --org "<org-url>" \
+    --project "<project-name>" \
+    --field "Microsoft.VSTS.TCM.ReproSteps=<path-to-repro-steps.md>" \
+    --field "System.Description=<path-to-description.md>" \
+    --field "Microsoft.VSTS.Common.AcceptanceCriteria=<path-to-ac.md>"
+```
+
+> ⛔ Same rules as PBIs: **NEVER** pass `--description` on `az boards` for multiline content. **NEVER** write HTML — always Markdown.
+
+### Refining an Existing Bug
+
+When the user asks to "refine" a bug, the workflow is:
+
+1. **Fetch current state**: `az boards work-item show --id <id> --org "<org-url>" -o json`
+2. **Extract existing content** from `Microsoft.VSTS.TCM.ReproSteps`, `System.Description`, and `Microsoft.VSTS.Common.AcceptanceCriteria`
+3. **Preserve user-provided content**: screenshots (`![alt](attachment-url)`), original observations, and user-added notes must be kept — do not discard them
+4. **Enrich with codebase context**: search the repo for relevant design docs, code references, and test specs to add Design Reference, Root Cause, and Fix Direction sections
+5. **Generate updated markdown** following `templates/bug-template.md`
+6. **Write to temp files and update** via the helper script
+7. **Verify** by re-fetching the work item and confirming field lengths are non-zero
+
+### Bug Hierarchy
+
+Bugs follow the same ADO hierarchy rules as PBIs:
+
+| Child type | Valid parent type |
+|---|---|
+| Bug | Feature (or no parent) |
+| Task | Bug |
+
+A Bug's parent must be a Feature — never another Bug or PBI. Use `az boards work-item relation add` to link (not `--parent`).
+
+## Optional Quality Gate
+
+After successful creation (PBI, Feature, or Bug), suggest:
+
+> **Optional:** Run `grill-pbi` to stress-test the requirements and acceptance criteria before moving to refinement or proposal generation.
+
+Do not invoke `grill-pbi` automatically — only suggest it. The user decides whether to grill.
+
+### Bug Usage Examples
+
+**Refine an existing bug:**
+> Refine bug 1013609 based on the repo context
+
+**Create a new bug:**
+> Create a bug: "Instance badge is clipped on entity nodes"
+
+**Create from a user report:**
+> Create a bug from this: "When I add an entity twice to a diagram, the numbered circle is cut off — I can only see the corner"

@@ -310,7 +310,14 @@ Present a summary:
 - **Source PBI**: #12345 — "Add login page"
 
 Ready for implementation! Run `/opsx:apply` or ask me to implement.
+
+### Recommended branch
+If not already on a feature/fix branch:
+- Bug: `fix/<id>-<slug>`
+- PBI/Feature: `feat/<id>-<slug>`
 ```
+
+**Note on branching**: This skill does not create or switch branches — that is the responsibility of the caller (typically `dobby-implement-pbi`). The branch recommendation is informational only.
 
 ## Error Handling
 
@@ -335,6 +342,16 @@ Ready for implementation! Run `/opsx:apply` or ask me to implement.
 - Escape special characters in WIQL queries.
 - Use `--output json` on all `az` commands for reliable parsing.
 - Include `--organization` on all commands unless a confirmed default exists.
+
+## Optional Quality Gate
+
+After successful proposal generation, suggest:
+
+> **Optional quality gates before implementation:**
+> - Run `grill-proposal` to challenge the scope, goals, and feasibility of the proposal.
+> - Run `grill-design` to stress-test the architecture, trade-offs, and implementation risks.
+
+Do not invoke these automatically — only suggest them. The user decides whether to grill.
 
 ## Usage Examples
 

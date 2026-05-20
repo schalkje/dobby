@@ -282,6 +282,16 @@ Ready for implementation! Invoke `/openspec-apply-change <name>` or ask me to im
 - Use `--output json` or `--json` on `gh` commands for reliable parsing.
 - Include `--repo "<owner>/<repo>"` on all `gh` commands.
 
+## Optional Quality Gate
+
+After successful proposal generation, suggest:
+
+> **Optional quality gates before implementation:**
+> - Run `grill-proposal` to challenge the scope, goals, and feasibility of the proposal.
+> - Run `grill-design` to stress-test the architecture, trade-offs, and implementation risks.
+
+Do not invoke these automatically — only suggest them. The user decides whether to grill.
+
 ## Usage Examples
 
 **By issue number:**

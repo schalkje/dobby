@@ -576,6 +576,14 @@ Bugs follow the same ADO hierarchy rules as PBIs:
 
 A Bug's parent must be a Feature — never another Bug or PBI. Use `az boards work-item relation add` to link (not `--parent`).
 
+## Optional Quality Gate
+
+After successful creation (PBI, Feature, or Bug), suggest:
+
+> **Optional:** Run `grill-pbi` to stress-test the requirements and acceptance criteria before moving to refinement or proposal generation.
+
+Do not invoke `grill-pbi` automatically — only suggest it. The user decides whether to grill.
+
 ### Bug Usage Examples
 
 **Refine an existing bug:**

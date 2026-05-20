@@ -28,6 +28,41 @@ description: Interview the user relentlessly about a plan or design until reachi
 - **Evidence-based** — prefers codebase evidence over assumptions
 - **Finite** — has a natural end state (shared understanding reached)
 
+## Current variations
+
+### `grill-pbi` — Requirements quality gate
+
+**When:** After PBI creation or refinement (suggested by `dobby-ado-create-pbi`, `dobby-ado-update-pbi`, `dobby-gh-create-issue`).
+
+**Focus:** Completeness, clarity, acceptance criteria quality, edge cases, scope boundaries, dependencies. Reads the actual PBI/issue content and compares against the project's templates (`pbi-template.md`, `issue-template.md`).
+
+**Output:** Structured findings with proposed updates. Offers to apply changes via `dobby-update-pbi` or `gh issue edit`.
+
+### `grill-proposal` — Proposal quality gate
+
+**When:** After OpenSpec proposal generation (suggested by `dobby-ado-propose-from-pbi`, `dobby-gh-propose-from-issue`).
+
+**Focus:** Scope alignment with source work item, goals specificity, non-goals coverage, approach justification, feasibility, risks, dependencies, backward compatibility.
+
+**Output:** Structured findings with proposed amendments to `proposal.md`.
+
+### `grill-design` — Design quality gate
+
+**When:** After OpenSpec proposal generation, alongside `grill-proposal` (same suggestion point).
+
+**Focus:** Architecture fit, trade-offs, complexity, error handling, performance, security, testability, migration, task coverage. Grounds every question in the actual codebase.
+
+**Output:** Structured findings with proposed amendments to `design.md` and `tasks.md`.
+
+### Depth strategy (shared across all variations)
+
+Each grill skill supports three depth modes:
+- **Quick** (3–5 questions): small, well-scoped items
+- **Standard** (5–10 questions): typical items (default)
+- **Deep** (exhaustive): large or ambiguous items, cross-cutting concerns
+
+The agent makes an educated guess based on complexity. If unsure, asks the user.
+
 ## Creating new variations
 
 Each variation is a **separate skill** with its own `SKILL.md` under `skills/<name>/`. This keeps each variation focused and independently discoverable.
@@ -72,15 +107,13 @@ Conversational skills can be invoked at any point in the workflow:
 
 Integration is **invocation-based**: a tracker or OpenSpec skill can suggest invoking a conversational skill, but they are never called automatically. The user always chooses to enter a grill session.
 
-### Potential variation ideas
+### Potential future variation ideas
 
-These are illustrative, not prescriptive — create variations when a real need arises:
+These are illustrative — create variations when a real need arises:
 
 | Variation | Focus | When to use |
 |---|---|---|
 | Security review | Threat modeling, attack surfaces, data handling | Before implementing auth, API, or data features |
-| Architecture critique | Scalability, coupling, dependency management | When proposing structural changes |
-| UX/accessibility audit | User flows, accessibility, error states | Before implementing user-facing features |
 | Cost analysis | Cloud resource costs, scaling implications | When proposing infrastructure changes |
 | Incident review | Root cause, timeline, prevention | After an incident, before writing the postmortem |
 
