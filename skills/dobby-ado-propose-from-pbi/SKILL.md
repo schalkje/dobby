@@ -308,7 +308,14 @@ Present a summary:
 - **Source PBI**: #12345 — "Add login page"
 
 Ready for implementation! Run `/opsx:apply` or ask me to implement.
+
+### Recommended branch
+If not already on a feature/fix branch:
+- Bug: `fix/<id>-<slug>`
+- PBI/Feature: `feat/<id>-<slug>`
 ```
+
+**Note on branching**: This skill does not create or switch branches — that is the responsibility of the caller (typically `dobby-implement-pbi`). The branch recommendation is informational only.
 
 ## Error Handling
 

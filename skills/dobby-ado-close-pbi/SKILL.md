@@ -484,6 +484,29 @@ openspec archive "<change-name>"
 - **Verify acceptance criteria against evidence** — do not blindly check all boxes. Cross-reference each criterion with implementation evidence.
 - **Multiple screenshots are welcome** — encourage capturing different states/views, not just a single screenshot.
 
+### Critical: Markdown Comment Format
+
+**Never use `az boards work-item update --discussion`** for comments that contain markdown. It produces HTML-only output that strips markdown formatting.
+
+Always use the `azdo-add-comment.py` script, which patches `System.History` with `multilineFieldsFormat: "Markdown"` (API version 7.2-preview.3). This is the ONLY way to get markdown rendered properly in ADO comments.
+
+### Evidence Upload Order
+
+When uploading screenshots as evidence:
+1. Upload images FIRST via `azdo-upload-attachment.py` to get attachment URLs
+2. Compose the markdown comment body using those attachment URLs
+3. Post the comment via `azdo-add-comment.py`
+
+Order matters — you need the attachment URLs before you can compose the comment.
+
+### Editing Comments
+
+Never use `PATCH /workItems/{id}/comments/{commentId}` to edit a comment — it silently downgrades markdown to HTML. Instead: delete the old comment with `azdo-delete-comment.py`, then re-post with `azdo-add-comment.py`.
+
+### Scope
+
+This skill handles evidence upload, acceptance criteria, state transitions, and closing comments. It does **not** create PRs or branches — those are the responsibility of the orchestrator (`dobby-implement-pbi`).
+
 ## Usage Examples
 
 **By PBI number:**
