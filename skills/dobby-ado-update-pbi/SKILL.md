@@ -29,6 +29,7 @@ If the intent is ambiguous, ask the user: "Do you want to update specific fields
 2. **NEVER write HTML in description, acceptance criteria, or repro steps fields.** Content must be **Markdown** — not HTML. No `<b>`, `<br>`, `<ul>`, `<li>` tags. Use markdown syntax: `**bold**`, line breaks, `- list items`. The helper script sets the field format to Markdown; HTML content in a Markdown-formatted field renders as raw escaped tags.
 3. **Follow the template** when generating content. PBIs use `skills/dobby-ado-create-pbi/templates/pbi-template.md`; Bugs use `skills/dobby-ado-create-pbi/templates/bug-template.md`. When updating a single section, preserve existing content in other sections unless the user explicitly asks to replace everything.
 4. **Always use the helper script for multiline fields** — `az boards` cannot set markdown format.
+5. **Run commands exactly as shown in this skill.** Do not add shell-specific piping, formatting, or post-processing (e.g., no `| ConvertFrom-Json | Select-Object`, no `| jq`). Use `--output json` and parse the JSON output in your own reasoning — not via shell commands. This keeps the skill portable across shells and avoids unnecessary complexity.
 
 ## Field Mapping by Work Item Type
 

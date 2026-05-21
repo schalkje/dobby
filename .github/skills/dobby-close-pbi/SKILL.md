@@ -38,7 +38,7 @@ Look for `.dobby/config.json` in the repository root.
 
 ### 2. Hand off to the matching implementation
 
-Based on the `backend` value, use the Read tool to load the corresponding SKILL.md and follow its instructions from the top, treating the user's original request as the input to that skill.
+Based on the `backend` value, use the Read tool to load the corresponding SKILL.md **from the canonical `skills/` directory** (not from `.github/skills/` or `.claude/skills/`) and follow its instructions from the top, treating the user's original request as the input to that skill.
 
 | `backend` value | Read and follow                                  |
 |-----------------|--------------------------------------------------|
