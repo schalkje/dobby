@@ -45,6 +45,11 @@ Read the `ado` block from `.dobby/config.json` in the repository root. Example s
 
 ## Steps
 
+### ⛔ Command Execution Rules
+
+- **No piping.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output — no `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
+- **Use canonical `skills/` paths.** Reference scripts from the canonical `skills/` directory — e.g., `python skills/dobby-ado-close-pbi/scripts/...`, not from `.github/skills/` or `.claude/skills/` host copies.
+
 ### 1. Validate Prerequisites
 
 Run these checks in parallel where possible.

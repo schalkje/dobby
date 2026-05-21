@@ -23,7 +23,8 @@ These rules prevent the most common and costly mistakes. Violating any one produ
 5. **NEVER create a PBI under another PBI.** ADO hierarchy is strict — see the hierarchy section below. A PBI's parent must be a Feature.
 6. **Always create items as `--type "Product Backlog Item"`.** Do not use `--type Task` unless explicitly creating a Task (a sub-work-item of a PBI).
 7. **Always use the helper script for multiline fields** — both on create and on update. `az boards` cannot set markdown format.
-8. **Run commands exactly as shown in this skill.** Do not add shell-specific piping, formatting, or post-processing (e.g., no `| ConvertFrom-Json | Select-Object`, no `| jq`). Use `--output json` and parse the JSON output in your own reasoning — not via shell commands.
+8. **Run commands exactly as shown — no piping, no post-processing.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output. This includes `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
+9. **Use canonical `skills/` paths for all file reads and script invocations.** Reference scripts and templates from the canonical `skills/` directory — e.g., `python skills/dobby-ado-create-pbi/scripts/azdo-update-fields.py`, not from `.github/skills/` or `.claude/skills/` host copies.
 
 ## ADO Work Item Hierarchy
 
