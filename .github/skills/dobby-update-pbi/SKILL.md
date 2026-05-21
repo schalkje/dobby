@@ -1,9 +1,9 @@
 ---
 name: dobby-update-pbi
-description: Update/refine a PBI, Bug, or Feature in this project's tracker. Auto-detects Azure DevOps vs GitHub from .dobby/config.json and hands off to the matching backend skill. Use this for any "update pbi", "refine pbi", "update description", "update acceptance criteria", or "fix pbi fields" request.
+description: Update/refine a PBI, Bug, or Feature in this project's tracker. Auto-detects Azure DevOps vs GitHub from .dobby/config.json and hands off to the matching backend skill. Use this for any "update pbi", "refine pbi", "improve pbi", "update description", "update acceptance criteria", "fix pbi fields", or "make this PBI better" request.
 metadata:
   author: dobby
-  version: "1.0"
+  version: "1.1"
 ---
 
 <!-- This file is a copy of `skills/dobby-update-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
