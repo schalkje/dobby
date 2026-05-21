@@ -1,0 +1,174 @@
+---
+name: dobby-worktree
+description: Manage git worktrees for parallel PBI development. Create, list, and remove worktrees tied to work items. Use for "create worktree", "list worktrees", "remove worktree", or "parallel development" requests.
+metadata:
+  author: dobby
+  version: "1.0"
+---
+
+<!-- This file is a copy of `skills/dobby-worktree/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
+
+# Git Worktree Management for PBIs
+
+Manage git worktrees so each PBI/issue gets its own working directory for parallel development. This skill handles three sub-commands: **create**, **list**, and **remove**.
+
+**Input**: A sub-command (`create`, `list`, or `remove`) and optionally a PBI/issue identifier. If no sub-command is clear from the user's request, ask which operation they want.
+
+## Configuration
+
+Read `.dobby/config.json` from the repository root. The optional `worktree` block controls behaviour:
+
+```json
+{
+  "worktree": {
+    "enabled": true,
+    "root": "../my-repo-worktrees"
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | boolean | `false` | Whether `dobby-implement-pbi` uses worktrees instead of `git checkout -b`. This skill works regardless of this setting — it's always available for manual use. |
+| `root` | string | `<repo-parent>/<repo-name>-worktrees/` | Directory where worktrees are created. Relative paths are resolved from the repository root. |
+
+**Determining the default root**: If `worktree.root` is not set, compute it:
+```bash
+# Get repo root and name
+git rev-parse --show-toplevel
+# Result: /path/to/my-repo
+# Default root: /path/to/my-repo-worktrees/
+```
+
+## Sub-command: create
+
+**Input**: A work item identifier (number, `AB#12345`, URL, or title) and the work item type (PBI, Bug, Feature, User Story).
+
+### Steps
+
+1. **Determine branch name** from work item type and title:
+   - Bug → `fix/<id>-<title-slug>`
+   - PBI / User Story / Feature → `feat/<id>-<title-slug>`
+   - Slug: kebab-case, max 40 characters, from the work item title
+
+2. **Check for existing worktree** for this PBI:
+   ```bash
+   git worktree list --porcelain
+   ```
+   Parse the output. If any worktree's branch contains the PBI ID (e.g., `feat/<id>-*` or `fix/<id>-*`), report the existing worktree path and stop — do not create a duplicate.
+
+3. **Resolve the worktree root** from config (see Configuration above).
+
+4. **Compute the worktree directory path**:
+   - Replace `/` with `-` in the branch name: `feat/123-add-auth` → `feat-123-add-auth`
+   - Full path: `<root>/<branch-slug>/`
+
+5. **Fetch latest and create worktree**:
+   ```bash
+   git fetch origin
+   git worktree add "<worktree-path>" -b "<branch-name>" origin/main
+   ```
+   
+   If the branch already exists on the remote or locally:
+   ```bash
+   git worktree add "<worktree-path>" "<branch-name>"
+   ```
+
+6. **Report success**:
+   ```
+   ✓ Created worktree for PBI #<id>
+     Branch:   <branch-name>
+     Path:     <worktree-path>
+     
+   To work in this worktree, change to the directory:
+     cd <worktree-path>
+   ```
+
+### Guards
+- Worktree creation does NOT require a clean working tree in the main worktree — it operates independently.
+- If the worktree root directory doesn't exist, create it.
+- Never auto-retry creation — if `git worktree add` fails, report the error and stop.
+
+## Sub-command: list
+
+### Steps
+
+1. **Get all worktrees**:
+   ```bash
+   git worktree list --porcelain
+   ```
+
+2. **Parse output** into a table. For each worktree, extract:
+   - `worktree <path>` — the directory path
+   - `HEAD <sha>` — the current commit
+   - `branch refs/heads/<name>` — the branch name
+
+3. **Identify PBI associations**: For branches matching `feat/<id>-*` or `fix/<id>-*`, extract the PBI/issue ID.
+
+4. **Detect stale worktrees**: For each non-main worktree, check the last commit date:
+   ```bash
+   git -C "<worktree-path>" log -1 --format="%ci" 2>$null
+   ```
+   If the last commit is more than 7 days old, mark the worktree as stale.
+
+5. **Display results**:
+   ```
+   ## Active Worktrees
+
+   | Path | Branch | PBI | Last Commit | Status |
+   |------|--------|-----|-------------|--------|
+   | C:\repo\project\ | main | — | 2025-05-20 | main |
+   | C:\repo\project-worktrees\feat-123-auth\ | feat/123-auth | #123 | 2025-05-19 | active |
+   | C:\repo\project-worktrees\fix-456-bug\ | fix/456-bug | #456 | 2025-05-10 | ⚠️ stale |
+   ```
+
+## Sub-command: remove
+
+**Input**: A PBI/issue identifier or branch name.
+
+### Steps
+
+1. **Find the worktree** by PBI ID or branch name:
+   ```bash
+   git worktree list --porcelain
+   ```
+   Search for a worktree whose branch contains the given PBI ID or matches the branch name.
+
+2. **If not found**: Report "No worktree found for PBI #<id>" and stop.
+
+3. **Check for uncommitted changes** in the worktree:
+   ```bash
+   git -C "<worktree-path>" status --short
+   ```
+
+4. **If uncommitted changes exist**: Warn the user and ask for confirmation:
+   > "⚠️ Worktree at `<path>` has uncommitted changes. Force removal? This will discard those changes."
+
+   If the user confirms:
+   ```bash
+   git worktree remove --force "<worktree-path>"
+   ```
+   
+   If the user declines, stop.
+
+5. **If clean**: Remove the worktree:
+   ```bash
+   git worktree remove "<worktree-path>"
+   ```
+
+6. **Report success**:
+   ```
+   ✓ Removed worktree for PBI #<id>
+     Path:   <worktree-path>
+     Branch: <branch-name> (kept — delete manually with `git branch -d <name>` if no longer needed)
+   ```
+
+**Note**: `git worktree remove` removes the directory and the worktree registration, but keeps the branch. This is intentional — the branch may still be needed for the PR.
+
+## Guardrails
+
+- This skill only manages git worktrees. It does not create work items, branches on the remote, or PRs.
+- Never delete branches — only remove worktrees. Branches are the user's responsibility.
+- Always use `--porcelain` for `git worktree list` output — it's machine-parseable.
+- If the worktree root is on a different drive/mount, warn the user that some tools may have path issues.
+- On Windows, prefer backslash paths for display but accept both separators as input.

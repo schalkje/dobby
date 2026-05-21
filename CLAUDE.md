@@ -38,7 +38,9 @@ The dobby workflow skills are organized as **dispatcher + backend** pairs. The u
 
 ```
 .dobby/config.json          ← project tracker config (replaces the old azdo-defaults.json)
-                              { "backend": "ado" | "github", "ado": {...}, "github": {...} }
+                              { "backend": "ado" | "github" | "combined",
+                                "ado": {...}, "github": {...},
+                                "worktree": { "enabled": bool, "root": "..." } }
                               See scripts/README.md for the full schema.
 
 skills/                     ← canonical source for all skills
@@ -49,14 +51,15 @@ skills/                     ← canonical source for all skills
 │
 ├── dobby-ado-create-pbi/         ←┐
 ├── dobby-ado-close-pbi/          ← Azure DevOps implementations.
-├── dobby-ado-propose-from-pbi/   ←┘ Invoked by dispatchers when backend = "ado".
+├── dobby-ado-propose-from-pbi/   ←┘ Invoked by dispatchers when backend = "ado" or "combined".
 │
 ├── dobby-gh-create-issue/        ←┐
 ├── dobby-gh-close-issue/         ← GitHub implementations.
-├── dobby-gh-propose-from-issue/  ←┘ Invoked by dispatchers when backend = "github".
+├── dobby-gh-propose-from-issue/  ←┘ Invoked by dispatchers when backend = "github" or "combined".
 │
-├── grill-me/                                                ← interview user, stress-test a plan
-└── openspec-{propose,apply-change,archive-change,explore}/  ← generic OpenSpec workflow skills
+├── dobby-worktree/                                              ← git worktree management (create/list/remove)
+├── grill-me/                                                    ← interview user, stress-test a plan
+└── openspec-{propose,apply-change,archive-change,explore}/      ← generic OpenSpec workflow skills
 
 .github/skills/   ← generated copies for Copilot CLI discovery
 .claude/skills/   ← generated copies for Claude Code discovery
@@ -66,11 +69,12 @@ How a dispatcher routes (using `dobby-close-pbi` as the example):
 
 1. Read `.dobby/config.json`.
 2. If the file is missing but legacy `.dobby/azdo-defaults.json` exists → run `scripts/migrate-dobby-config.py` to migrate.
-3. If the file is missing entirely → ask the user "Azure DevOps or GitHub?" and persist their answer.
+3. If the file is missing entirely → ask the user "Azure DevOps, GitHub, or Combined?" and persist their answer.
 4. If `backend` holds an unrecognized value → stop and ask the user to fix it (never guess).
 5. Use the Read tool to load the matching backend SKILL.md (`dobby-ado-close-pbi` or `dobby-gh-close-issue`) and follow its instructions from the top.
+6. For `"combined"` backend: work-item operations (state, comments, evidence upload) go to ADO skills; repo/PR operations (branch, commit evidence, PR) go to GitHub skills.
 
-The backend skill collects its own connection details (org/project/team for ADO; owner/repo for GitHub) on first run and persists them into the corresponding block of `.dobby/config.json`.
+The backend skill collects its own connection details (org/project/team for ADO; owner/repo for GitHub) on first run and persists them into the corresponding block of `.dobby/config.json`. For `"combined"`, both blocks must be populated.
 
 The dispatchers' user-facing names (`dobby-create-pbi`, `dobby-close-pbi`, `dobby-propose-from-pbi`) are preserved deliberately so existing muscle memory and natural-language intents continue to work.
 
@@ -112,16 +116,37 @@ The `gh` CLI is mature enough that the GitHub backend skills (`dobby-gh-*`) shel
 
 ### Cross-skill invariants
 
-- **Backend selector lives in `.dobby/config.json`**: every dispatcher reads `backend` first and routes accordingly. The active tracker's connection block (`ado` or `github`) holds the per-backend details. File defaults take priority over CLI defaults (`az devops configure --list`, etc.).
+- **Backend selector lives in `.dobby/config.json`**: every dispatcher reads `backend` first and routes accordingly. Valid values are `"ado"`, `"github"`, or `"combined"`. The active tracker's connection block (`ado` and/or `github`) holds the per-backend details. File defaults take priority over CLI defaults (`az devops configure --list`, etc.).
 - **Dispatchers never call tracker APIs**: `dobby-create-pbi`, `dobby-close-pbi`, and `dobby-propose-from-pbi` route only. All `az`, `gh`, REST-API, and helper-script calls live in backend skills (`dobby-ado-*` or `dobby-gh-*`).
 - **Backend skills own their connection-detail collection**: dispatchers stop at the `backend` choice. Org/project/team (ADO) and owner/repo (GitHub) are collected by the backend skill on first run and persisted into the corresponding block of `.dobby/config.json`.
-- **Unrecognized backend → stop, don't guess**: if `.dobby/config.json` has `backend` set to something other than `"ado"` or `"github"`, the dispatcher halts and asks the user to fix the file.
+- **Combined mode**: `backend: "combined"` means ADO for work items + GitHub for repo/PRs. Dispatchers route work-item operations to ADO skills and repo/PR operations to GitHub skills. Both `ado` and `github` config blocks must be populated. Both identities (`az account show` + `gh auth status`) are verified at the start.
+- **Unrecognized backend → stop, don't guess**: if `.dobby/config.json` has `backend` set to something other than `"ado"`, `"github"`, or `"combined"`, the dispatcher halts and asks the user to fix the file.
 - **GitHub close requires a PR**: `dobby-gh-close-issue` refuses to proceed unless an open PR references the issue via `Closes #<N>`, `Fixes #<N>`, or `Resolves #<N>`. Closure happens at PR merge, not by `gh issue close`.
 - **Two-step ADO PBI creation**: `az boards work-item create` (basic fields) → `azdo-update-fields.py` (markdown body). Never pass `--description` to `az boards work-item create`; it will truncate.
 - **Identity displayed early**: every backend skill runs `az account show` or `gh auth status` before doing real work so the user can catch wrong-account issues before wasting a flow.
 - **Trust user-provided field values**: skills should NOT pre-validate area paths, iterations, labels, or parent IDs against listings if the user supplied them. Attempt the operation, re-prompt only on failure.
 - **Never auto-retry creation**: prevents duplicate work items / issues.
 - **Markdown templates as the source of structure**: PBI body shape lives in `skills/dobby-ado-create-pbi/templates/pbi-template.md` (one file mapping to two ADO fields). GitHub issue body shape lives in `skills/dobby-gh-create-issue/templates/issue-template.md` (one file with Description + Acceptance Criteria sections, since GitHub has a single body field). Don't inline these structures inside the SKILL.md.
+
+### Git worktree support
+
+The `dobby-worktree` skill enables parallel PBI development by creating git worktrees — each PBI gets its own working directory while sharing the same `.git` store. This is opt-in via `.dobby/config.json`:
+
+```json
+{
+  "worktree": {
+    "enabled": true,
+    "root": "../my-repo-worktrees"
+  }
+}
+```
+
+When `worktree.enabled` is `true`, `dobby-implement-pbi` Phase 1 delegates to `dobby-worktree create` instead of `git checkout -b`. Worktrees are created as sibling directories to the main repo (default root: `<repo-parent>/<repo-name>-worktrees/`). Directory names match branch names with `/` replaced by `-` (e.g., branch `feat/123-auth` → directory `feat-123-auth`).
+
+Key behaviours:
+- **Config shared, evidence isolated**: `.dobby/config.json` is tracked in git (shared across worktrees). `.dobby/evidence/` is gitignored (per-worktree isolation).
+- **Post-close cleanup**: `dobby-close-pbi` offers to remove the worktree after successful closure (for all backends).
+- **Standalone usage**: `dobby-worktree` works independently of `dobby-implement-pbi` — users can manage worktrees manually.
 
 ## Common operations
 

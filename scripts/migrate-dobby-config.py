@@ -5,9 +5,10 @@ The legacy file is ADO-specific by name and schema. The new file accommodates
 multiple trackers via a top-level `backend` selector and per-backend blocks:
 
     {
-      "backend": "ado",                   // or "github"
+      "backend": "ado",                   // or "github" or "combined"
       "ado":    { "organization": ..., "project": ..., "team": ..., "devLinks": ... },
-      "github": { "owner": ..., "repo": ..., ... }
+      "github": { "owner": ..., "repo": ..., ... },
+      "worktree": { "enabled": false, "root": "..." }   // optional
     }
 
 This script reads `.dobby/azdo-defaults.json`, wraps its contents in

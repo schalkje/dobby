@@ -1,9 +1,9 @@
 ---
 name: dobby-update-pbi
-description: Update/refine a PBI, Bug, or Feature in this project's tracker. Auto-detects Azure DevOps vs GitHub from .dobby/config.json and hands off to the matching backend skill. Use this for any "update pbi", "refine pbi", "improve pbi", "update description", "update acceptance criteria", "fix pbi fields", or "make this PBI better" request.
+description: Update/refine a PBI, Bug, or Feature in this project's tracker. Auto-detects Azure DevOps, GitHub, or Combined mode from .dobby/config.json and hands off to the matching backend skill. Use this for any "update pbi", "refine pbi", "improve pbi", "update description", "update acceptance criteria", "fix pbi fields", or "make this PBI better" request.
 metadata:
   author: dobby
-  version: "1.1"
+  version: "2.0"
 ---
 
 <!-- This file is a copy of `skills/dobby-update-pbi/SKILL.md` — edit the source, not this copy. Regenerate with `python scripts/sync-skills.py`. -->
@@ -16,7 +16,7 @@ Update or refine a work item in whichever tracker this project uses. This skill 
 
 Look for `.dobby/config.json` in the repository root.
 
-**If the file exists** and `backend` is `"ado"` or `"github"`:
+**If the file exists** and `backend` is `"ado"`, `"github"`, or `"combined"`:
 - Go to step 2.
 
 **If the file is missing**, check whether the legacy `.dobby/azdo-defaults.json` exists:
@@ -28,12 +28,15 @@ Look for `.dobby/config.json` in the repository root.
   Re-read `.dobby/config.json` and go to step 2.
 
 - **No** (fresh project with no tracker config yet) → ask the user:
-  > "This project doesn't have a tracker configured. Are you using Azure DevOps or GitHub?"
+  > "This project doesn't have a tracker configured. Which setup are you using?"
+  > - **Azure DevOps** — work items and repo both in ADO
+  > - **GitHub** — issues and repo both in GitHub
+  > - **Combined** — ADO for work items, GitHub for repo/PRs
 
   Write `{ "backend": "<choice>" }` to `.dobby/config.json` (creating the `.dobby/` directory if needed). The backend skill will collect connection details (organization, project, owner, repo, etc.) on its first run — do not collect them here. Go to step 2.
 
-**If `backend` is set but holds an unrecognized value** (anything other than `"ado"` or `"github"`):
-- Stop. Report: "Unrecognized `backend` value in `.dobby/config.json`: `<value>`. Expected `'ado'` or `'github'`. Please correct the file before re-running."
+**If `backend` is set but holds an unrecognized value** (anything other than `"ado"`, `"github"`, or `"combined"`):
+- Stop. Report: "Unrecognized `backend` value in `.dobby/config.json`: `<value>`. Expected `'ado'`, `'github'`, or `'combined'`. Please correct the file before re-running."
 - Do not guess, do not default.
 
 ### 2. Hand off to the matching implementation
@@ -44,6 +47,13 @@ Based on the `backend` value, use the Read tool to load the corresponding SKILL.
 |-----------------|--------------------------------------------------|
 | `"ado"`         | `skills/dobby-ado-update-pbi/SKILL.md`           |
 | `"github"`      | *(not yet implemented — stop and notify user)*   |
+| `"combined"`    | `skills/dobby-ado-update-pbi/SKILL.md` *(work items live in ADO)* |
+
+**Combined mode note**: For `"combined"`, work item updates route to ADO. Before handing off, verify both identities:
+```bash
+az account show --output json    # ADO identity
+gh auth status                   # GitHub identity
+```
 
 ## Guardrails
 

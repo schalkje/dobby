@@ -38,6 +38,7 @@ Before starting, check what already exists to support resume:
 
 ```
 - Current branch: does it already match the PBI? (e.g., `fix/<id>-*` or `feat/<id>-*`)
+- Existing worktree: does `git worktree list --porcelain` show a worktree whose branch matches the PBI ID?
 - OpenSpec change: does `openspec/changes/*<id>*` already exist?
 - Evidence: does `tests/e2e/evidence/*<id>*/before-*` exist?
 - Uncommitted changes: `git status --short`
@@ -45,11 +46,26 @@ Before starting, check what already exists to support resume:
 - PBI state: already Done?
 ```
 
+If a matching worktree exists, report its path and suggest changing to that directory before proceeding.
+
 Report findings and propose which phases to skip.
 
 ## Phase 1: Create Branch
 
-**Skip if**: already on a PBI-matching branch.
+**Skip if**: already on a PBI-matching branch, or a matching worktree already exists.
+
+### Worktree mode (when `worktree.enabled` is `true` in `.dobby/config.json`)
+
+Read and follow `skills/dobby-worktree/SKILL.md`, using the `create` sub-command with the work item ID and title as input.
+
+After the worktree is created, instruct the user to change to the worktree directory:
+```
+cd <worktree-path>
+```
+
+**Note**: The remaining phases should execute from within the worktree directory, not the main worktree.
+
+### Standard mode (default, or when `worktree.enabled` is `false` or absent)
 
 Determine branch name from work item type:
 - Bug → `fix/<id>-<title-slug>`

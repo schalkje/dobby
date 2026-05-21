@@ -2,7 +2,14 @@
 
 ## Project status
 
-This repository is a collection of **agent skill definitions** (markdown `SKILL.md` files plus small Python helper scripts) that automate the Azure DevOps PBI lifecycle and wrap the OpenSpec workflow. There is no build, test, or lint pipeline — the "code" is the skill prompts and their helpers.
+This repository is a collection of **agent skill definitions** (markdown `SKILL.md` files plus small Python helper scripts) that automate the work-item lifecycle (Azure DevOps PBIs and/or GitHub Issues) and wrap the OpenSpec workflow. There is no build, test, or lint pipeline — the "code" is the skill prompts and their helpers.
+
+The project supports three backend modes configured via `.dobby/config.json`:
+- **`"ado"`** — Azure DevOps for both work items and repo
+- **`"github"`** — GitHub for both issues and repo
+- **`"combined"`** — ADO for work items, GitHub for repo/PRs
+
+Git worktree support (`dobby-worktree` skill) enables parallel PBI development — each PBI gets its own working directory. Opt-in via `"worktree": { "enabled": true }` in config.
 
 When asked to make changes, first check whether the necessary scaffolding exists. If it does not, propose a structure before generating files, rather than assuming one.
 
@@ -43,7 +50,7 @@ These stages are distinct **processes/agents**, not a single monolithic flow. Tr
 - Methodology: **OpenSpec** (the user explicitly wants the project structured this way — confirm OpenSpec conventions before scaffolding).
 - AI runtime: **GitHub Copilot / Azure** (prefer these over other LLM providers when adding integrations).
 - UI: not yet decided — must be easily accessible, clear, and interactive. Do not assume a framework; ask before introducing one.
-- Target system: **Azure DevOps** (Work Items / PBIs API).
+- Target system: **Azure DevOps** (Work Items / PBIs API), **GitHub** (Issues API), or **Combined** (ADO work items + GitHub repo).
 
 ## Conventions for working in this repo
 
