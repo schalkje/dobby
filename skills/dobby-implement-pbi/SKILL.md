@@ -100,26 +100,61 @@ Incorporate findings back into the design/tasks if needed.
 
 ## Phase 4: Classify Change & Capture Before Evidence
 
-**4a. Classify UI vs non-UI:**
+**4a. Classify change type — three categories:**
 
-| Signal | Likely UI change |
+| Category | Evidence strategy | Trigger |
+|---|---|---|
+| **Bug fix / UI change** | Before + After screenshots | Work item is Bug, OR title/description mentions fix/change to existing UI elements |
+| **New feature (UI)** | After screenshots only | Work item is PBI/Feature that adds new UI — there is no "before" to capture |
+| **Non-UI change** | No screenshot evidence | Changes only in backend, types, config, docs, tests |
+
+Use these signals to classify:
+
+| Signal | Category |
 |---|---|
-| Title/description mentions: UI, UX, visual, layout, editor, diagram, highlight, icon, theme, tooltip, button, dialog, sidebar, toolbar, badge, clipped, rendering | Yes |
-| Changed files in `renderer/components/`, `renderer/styles/`, image assets | Yes |
-| Changes only in `main/`, `shared/types/`, config, docs, tests, backend services | No |
+| Work item type = Bug + UI-related | Bug fix / UI change |
+| Title mentions: fix, improve, update, change + UI keywords (layout, editor, diagram, icon, tooltip, button, dialog, sidebar, toolbar, badge, rendering) | Bug fix / UI change |
+| Title mentions: add, create, new, implement + UI keywords | New feature (UI) |
+| Changed files in `renderer/components/`, `renderer/styles/`, image assets | UI-related (check if new or existing) |
+| Changes only in `main/`, `shared/types/`, config, docs, tests, backend services | Non-UI |
 | Mixed or unclear | Ask the user |
 
-**4b. Capture before evidence (UI changes only):**
+**4b. Capture before evidence (Bug fix / UI change ONLY):**
 
-If the project has Playwright E2E support:
+Before evidence shows the current (broken/old) state. **Skip this step for new features and non-UI changes.**
+
+**Always use Playwright when the project supports it** (Playwright config exists + E2E fixtures available). This is the preferred and default approach — do not ask the user to take manual screenshots when Playwright is available.
 
 1. Build the app: `npm run build`
-2. Create/run `tests/e2e/bug-<id>-evidence.spec.ts` (or `pbi-<id>-evidence.spec.ts`)
-3. Output to `tests/e2e/evidence/bug-<id>/before-*.png`
+2. Create `tests/e2e/pbi-<id>-evidence.spec.ts` (or `bug-<id>-evidence.spec.ts`) with descriptive test names
+3. Each screenshot MUST include a descriptive filename acting as header+description:
+   - Format: `before-NN-<description>.png` (e.g., `before-01-entity-editor-without-highlight.png`)
+   - The description becomes the caption in the ADO evidence comment
+4. Output to `tests/e2e/evidence/<prefix>-<id>/`
+5. Run the spec: `npx playwright test tests/e2e/<prefix>-<id>-evidence.spec.ts --reporter=list`
 
-If Playwright is not available, ask the user to provide screenshots.
+**4c. Post before evidence to ADO immediately:**
 
-**Skip if**: before screenshots already exist, or this is a non-UI change.
+After capturing before screenshots, upload them and post an evidence comment to the work item **before starting implementation**. This establishes the baseline in the work item history.
+
+1. Upload images: `python skills/dobby-ado-close-pbi/scripts/azdo-upload-attachment.py ...`
+2. Compose a "Before Evidence" comment:
+   ```markdown
+   ## 📸 Before Evidence
+
+   Current state before implementation begins.
+
+   ### <Description from filename>
+   ![Before — <description>](<attachment-url>)
+
+   ### <Description from filename>
+   ![Before — <description>](<attachment-url>)
+   ```
+3. Post via: `python skills/dobby-ado-close-pbi/scripts/azdo-add-comment.py ...`
+
+Each image gets its own `### Header` with a human-readable description derived from the filename (strip `before-NN-`, replace hyphens with spaces, title-case).
+
+**Skip Phase 4b/4c if**: before screenshots already exist, this is a new feature, or this is a non-UI change.
 
 ## Phase 5: Implement
 
@@ -141,14 +176,24 @@ npm run test
 
 Report results. If failures occur, determine if they are pre-existing or caused by the change.
 
-## Phase 7: Capture After Evidence (UI changes)
+## Phase 7: Capture After Evidence
 
-**Skip if**: non-UI change.
+**Skip if**: non-UI change (no screenshots needed).
+
+**Applies to**: Bug fixes / UI changes (with matching before shots) AND new features (after-only).
+
+**Always use Playwright when available** — do not ask the user for manual screenshots.
 
 1. Rebuild: `npm run build`
-2. Run the evidence spec again (same spec from Phase 4)
-3. Rename outputs: `after-*.png`
-4. Compare before vs after — confirm the fix is visible
+2. Update or extend the evidence spec (`tests/e2e/<prefix>-<id>-evidence.spec.ts`):
+   - **Bug fix / UI change**: Create after screenshots that mirror the before screenshots — same views, same navigation, same zoom level, so the improvement is directly comparable. Use matching filenames: `after-NN-<description>.png` where `NN` and `<description>` correspond to the before shots.
+   - **New feature**: Create after screenshots that demonstrate the feature. Use: `after-NN-<description>.png`
+3. Each screenshot MUST have a descriptive filename:
+   - Format: `after-NN-<description>.png` (e.g., `after-01-entity-editor-with-highlight.png`, `after-02-relation-browser-dialog-open.png`)
+   - The description becomes the caption in the ADO evidence comment
+4. Run the spec: `npx playwright test tests/e2e/<prefix>-<id>-evidence.spec.ts --reporter=list`
+
+**Important**: For bug fixes, do NOT repeat the before screenshots — only capture the after state. The before evidence was already posted in Phase 4c. The after evidence will be posted in the closing comment (Phase 9a).
 
 ## Phase 8: Commit & Push
 
@@ -162,23 +207,39 @@ git push -u origin <branch-name>
 
 Commit type: `fix:` for bugs, `feat:` for features, `refactor:` / `docs:` / etc. as appropriate.
 
-## Phase 9: Upload Evidence & Create PR
+## Phase 9: Upload After Evidence & Create PR
 
-**9a. Upload evidence to ADO (if screenshots exist):**
+**9a. Upload after evidence to ADO (if screenshots exist):**
 
-Upload before/after screenshots as work item attachments:
+Upload after screenshots as work item attachments:
 ```bash
 python .github/skills/dobby-ado-close-pbi/scripts/azdo-upload-attachment.py \
     --work-item-id <id> --org "<org>" --project "<project>" <files...>
 ```
 
-Post a markdown evidence comment using the attachment URLs:
+Post a markdown "After Evidence" comment with headers and descriptions for each screenshot:
+```markdown
+## 📸 After Evidence
+
+State after implementation.
+
+### <Description from filename>
+![After — <description>](<attachment-url>)
+
+### <Description from filename>
+![After — <description>](<attachment-url>)
+```
+
+Each image gets its own `### Header` with a human-readable description derived from the filename (strip `after-NN-`, replace hyphens with spaces, title-case).
+
 ```bash
 python .github/skills/dobby-ado-close-pbi/scripts/azdo-add-comment.py \
     --work-item-id <id> --org "<org>" --project "<project>" --file <comment.md>
 ```
 
 **Never use `az boards work-item update --discussion`** for markdown comments — it produces HTML-only output. Always use the `azdo-add-comment.py` script which patches `System.History` with `multilineFieldsFormat: "Markdown"`.
+
+**Note**: Before evidence was already posted in Phase 4c (if applicable). The after evidence is a separate comment so the timeline clearly shows before → implementation → after.
 
 **9b. Create Pull Request:**
 
@@ -236,10 +297,14 @@ Present the final status:
 
 ### Fast Bugfix (small, obvious fix)
 Skip: Grill (Phase 3), detailed spec (Phase 2 — create minimal tasks only)
-Focus: Fix → Verify → Evidence → PR → Close
+Focus: Before evidence → Fix → Verify → After evidence → PR → Close
+
+### New Feature (UI)
+Skip: Before evidence (Phase 4b/4c — nothing exists yet to screenshot)
+Include: After evidence only (Phase 7) — demonstrate the new feature with Playwright screenshots
 
 ### Non-UI Change
-Skip: Before/After evidence screenshots (Phases 4b, 7)
+Skip: All screenshot evidence (Phases 4b, 4c, 7)
 Include: Test results as evidence
 
 ### Resume / Partial

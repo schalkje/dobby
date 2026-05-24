@@ -124,78 +124,88 @@ If the user provides test evidence or if test commands are available:
 
 If the user included a summary of what was done, use it as the primary evidence.
 
-**4e. Classify change type — UI or non-UI**
+**4e. Classify change type — three categories:**
 
-Determine whether this PBI involves visual/UI changes. Use these signals:
+| Category | Evidence strategy | Trigger |
+|---|---|---|
+| **Bug fix / UI change** | Before + After screenshots | Work item is Bug, OR title/description mentions fix/change to existing UI elements |
+| **New feature (UI)** | After screenshots only | Work item is PBI/Feature that adds new UI — there is no "before" to capture |
+| **Non-UI change** | No screenshot evidence | Changes only in backend, types, config, docs, tests |
 
-| Signal | Likely UI change |
+Use these signals:
+
+| Signal | Category |
 |---|---|
-| Title/description mentions: UI, UX, visual, layout, editor, diagram, highlight, icon, theme, tooltip, button, dialog, sidebar, toolbar | Yes |
-| Changed files in `renderer/components/`, `renderer/styles/`, or image assets | Yes |
-| Changes only in `main/`, `shared/types/`, config, docs, tests, backend services | No |
-| Mixed signals or unclear | Ask the user |
+| Work item type = Bug + UI-related | Bug fix / UI change |
+| Title mentions: fix, improve, update, change + UI keywords | Bug fix / UI change |
+| Title mentions: add, create, new, implement + UI keywords | New feature (UI) |
+| Changes only in `main/`, `shared/types/`, config, docs, tests, backend services | Non-UI |
+| Mixed or unclear | Ask the user |
 
-**If UI change → screenshots are strongly recommended.** Proceed to step 4f.
-**If non-UI change → screenshots are optional.** Skip to step 5.
-**If uncertain → ask the user:** "This PBI might involve visible UI changes. Would you like to include before/after screenshots?"
+**If non-UI change → no screenshots needed.** Skip to step 5.
+**If UI change or new feature → proceed to 4f.**
 
-**4f. Screenshot evidence** (before/after images)
+**4f. Screenshot evidence** (Playwright-first)
 
-Check for locally stored evidence screenshots:
-```bash
-python skills/dobby-ado-close-pbi/scripts/evidence-store.py list --work-item-id <pbi-id>
-```
+**Always use Playwright when the project supports it** (Playwright config exists + E2E fixtures available). This is the default — do not ask the user to take manual screenshots when Playwright is available.
 
-Parse the JSON output and handle each phase:
-
-**Before screenshots:**
-- If **before** images exist: "Found N before screenshot(s) that will be included."
-- If **no before** images exist AND this is a UI change: inform the user — "No before screenshots were captured. For future PBIs, capture before screenshots when starting work using: `python skills/dobby-ado-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase before <files...>`"
-- Continue without before images if unavailable — don't block closing.
-
-**After screenshots:**
-- If this is a **UI change**, actively prompt the user: "This is a UI change — would you like to capture after screenshots now? You can provide file paths to attach."
-- If the app appears to be running (check for the process), mention it: "The app appears to be running — now is a good time to capture screenshots showing the feature in action."
-- Accept file paths from the user. Store them:
-  ```bash
-  python skills/dobby-ado-close-pbi/scripts/evidence-store.py store --work-item-id <pbi-id> --phase after <file1> <file2> ...
-  ```
-- The user may also provide image file paths directly without storing them first.
-- Multiple screenshots are supported — each should have a short descriptive caption.
-
-**If the user declines screenshots**, continue without them. Do not block closing.
-
-**4g. Generate evidence screenshots via Playwright** (when the project supports it)
-
-If the project has a Playwright e2e setup with a working "open model" pattern (look for `tests/e2e/` and a `help-screenshots.spec.ts` or similar), you can generate the evidence automatically instead of asking the user to capture them by hand. This is strongly preferred for UI changes.
-
-**How to recognize the project supports this:**
+**How to recognize the project supports Playwright evidence:**
 - `playwright.config.ts` exists at the repo root
 - `tests/e2e/` contains specs that use `_electron.launch(...)` or a similar app launcher
 - A reference spec produces PNGs (e.g., `help-screenshots.spec.ts` in `cdmedit`)
 - A demo / fixture model exists under `tests/e2e/fixtures/` so the spec can run deterministically
 
-**Pattern (use the `cdmedit` repo as the reference):**
+**Evidence file naming — each screenshot MUST have a descriptive filename:**
+- Format: `<phase>-NN-<description>.png`
+  - `before-01-entity-editor-current-state.png`
+  - `after-01-entity-editor-with-highlight.png`
+  - `after-02-relation-browser-dialog-open.png`
+- The description becomes the header/caption in the ADO evidence comment
+- For bug fixes, `before-NN` and `after-NN` should use matching numbers and similar descriptions so the improvement is directly comparable
 
-1. Create `tests/e2e/pbi-<id>-evidence.spec.ts` modeled on the project's screenshot spec.
-2. Output screenshots to `tests/e2e/evidence/pbi-<id>/*.png` (one folder per PBI). **Add `tests/e2e/evidence/` to `.gitignore`** — once uploaded to ADO the images live as work-item attachments, so keeping them in git is duplication. They can always be regenerated by re-running the spec.
-3. Set `viewport: { width: 1400, height: 900 }` (or the project default) and use `--trace=on-first-retry` to ease debugging.
-4. Capture **at least one "before" screenshot** (initial state) and **one or more "after" screenshots** (each acceptance criterion demonstrated).
-5. Use targeted element screenshots (`elementScreenshot('selector')`) rather than full-page when possible — they are easier to read and don't pick up irrelevant UI chrome.
+**Evidence spec pattern:**
+
+1. Create `tests/e2e/pbi-<id>-evidence.spec.ts` (or `bug-<id>-evidence.spec.ts`) modeled on the project's screenshot spec.
+2. Output screenshots to `tests/e2e/evidence/<prefix>-<id>/*.png` (one folder per PBI). **Add `tests/e2e/evidence/` to `.gitignore`** — once uploaded to ADO the images live as work-item attachments, so keeping them in git is duplication.
+3. Set `viewport: { width: 1400, height: 900 }` (or the project default).
 
 **Build & run (do this every time before running the spec):**
 ```bash
-# Make sure the production bundle is fresh — stale dist-electron will silently fail
-npm run build      # or: node node_modules/electron-vite/bin/electron-vite.js build
-
-npx playwright test tests/e2e/pbi-<id>-evidence.spec.ts --reporter=list
+npm run build
+npx playwright test tests/e2e/<prefix>-<id>-evidence.spec.ts --reporter=list
 ```
 
-**Common pitfalls** (learned from PBI 1021103):
+**When the `dobby-implement-pbi` orchestrator invoked this skill**, before evidence should already be uploaded (Phase 4c). Check the work item discussion for an existing "Before Evidence" comment. If present, only after evidence needs to be gathered here.
+
+**When this skill is invoked standalone** (not from the orchestrator), gather all evidence now:
+- Check for existing before/after screenshots in `tests/e2e/evidence/<prefix>-<id>/`
+- If none exist and this is a UI change, generate them via Playwright
+- If Playwright is not available, ask the user to provide file paths
+
+**After evidence comment format** — each image gets its own heading:
+```markdown
+## 📸 After Evidence
+
+State after implementation.
+
+### <Description from filename>
+![After — <description>](<attachment-url>)
+
+### <Description from filename>
+![After — <description>](<attachment-url>)
+```
+
+Derive the heading from the filename: strip `after-NN-`, replace hyphens with spaces, title-case.
+
+**If the user declines screenshots**, continue without them. Do not block closing.
+
+**Common pitfalls** (learned from PBI 1021103 and 1013608):
 - **Stale `dist-electron/`** causes cryptic timeouts — always rebuild first.
 - **Tree-label substring matching** picks up unintended items: use `:text-is("Client")` for exact match (avoids matching "Client Relations").
 - **View/Edit mode**: in `cdmedit`, the "Edit" tab on entity pages only appears when the global view/edit toggle (top toolbar `button[title*="Edit mode"]`) is in **Edit** mode. Click it before clicking the Edit tab.
-- **Avoid broken setup helpers**: if `setupWithDemiModel` (or equivalent) is failing, copy the launch+open pattern from `help-screenshots.spec.ts` directly rather than waiting for it to be fixed.
+- **React Flow node selector specificity**: Use `.react-flow__node-entity` (not `.react-flow__node`) to target entity nodes and avoid matching domain containers. Use `page.mouse.dblclick(x, y)` for native events that bubble through React Flow, not `locator.dblclick({ force: true })`.
+- **Edge interaction paths** intercept pointer events on handles — use `{ force: true }` for hover/click, or use `page.mouse.click(x, y)` with computed coordinates.
+- **Avoid broken setup helpers**: if `setupWithDemiModel` (or equivalent) is failing, copy the launch+open pattern from `help-screenshots.spec.ts` directly.
 - **Permission-denied on `npx`/`npm`** in some shells: fall back to `node node_modules/playwright/cli.js test ...` and `node node_modules/electron-vite/bin/electron-vite.js build`.
 
 After the spec passes, hand the resulting PNGs to step 6a (upload) — no need to ask the user for files.
