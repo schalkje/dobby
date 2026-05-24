@@ -11,37 +11,37 @@
      This is the PRIMARY content field for Bugs (equivalent to Description for PBIs).
      ═══════════════════════════════════════════════════════════════════════════ -->
 
-## Summary
+## 🐞 Summary
 
 > *One or two sentences describing the defect. Reference the relevant FR if applicable.*
 
-## Current Behavior
+## ⚠️ Current Behavior
 
 > *What actually happens. Include screenshots (as `![alt](attachment-url)`) if available.*
 
-## Expected Behavior
+## ✅ Expected Behavior
 
 > *What should happen instead, per design docs or acceptance criteria.*
 
-## Steps to Reproduce
+## 🔁 Steps to Reproduce
 
 1. Step one
 2. Step two
 3. Step three
 
-## Design Reference
+## 📐 Design Reference
 
 | Type | Reference |
-|---|---|
+| --- | --- |
 | Requirement | FR-XXX-NNN |
 | Design doc | `docs/design/...` |
 | Component | `src/renderer/...` |
 
-## Root Cause (if known)
+## 🧩 Root Cause (if known)
 
 > *Brief analysis of what's causing the bug. Reference specific code if applicable.*
 
-## Fix Direction (if known)
+## 🛠️ Fix Direction (if known)
 
 > *Suggested approach to fix the issue.*
 
@@ -56,10 +56,17 @@
 > *Optional: brief context that doesn't fit in Repro Steps — e.g., environment info,
 > related work items, or background on when the bug was introduced.*
 
+### 👤 Stakeholder (optional)
+
+| Role | Name / Group |
+| --- | --- |
+| Reporter | |
+| Impacted stakeholder | |
+
 ### 🔗 Related Items
 
 | Relation | Item |
-|---|---|
+| --- | --- |
 | Parent | [#NNNN](https://dev.azure.com/<org>/<project>/_workitems/edit/NNNN) |
 | Related | [#NNNN](https://dev.azure.com/<org>/<project>/_workitems/edit/NNNN) |
 
@@ -77,4 +84,4 @@
 
 ---
 
-*Template version 1.0 — Dobby Bug Framework*
+Template version 1.1 - Dobby Bug Framework
