@@ -2,6 +2,33 @@
 
 Agentic DevOps — a collection of agent **skills** that automate the Azure DevOps PBI lifecycle (create → propose-spec → close-with-evidence) plus generic OpenSpec workflow helpers.
 
+## Prerequisites
+
+You need the OpenSpec CLI installed to use the OpenSpec workflow skills (`openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`) and `dobby-propose-from-pbi`.
+
+### Install OpenSpec CLI
+
+Install from npm:
+
+```bash
+npm install -g @openspec/cli
+```
+
+If you prefer not to install globally, use `npx`:
+
+```bash
+npx @openspec/cli --help
+```
+
+Verify the installation:
+
+```bash
+openspec --version
+openspec list --json
+```
+
+If the `openspec` command is not found after global install, restart your terminal so your PATH updates.
+
 ## Skill layout
 
 Every skill has one canonical source folder and two host-discovery copies:

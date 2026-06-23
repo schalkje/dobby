@@ -10,3 +10,21 @@ Whether it's Azure DevOps. With Pbis and boards, or Github with issues I want it
 So I think you can use the word pbi and issue interchangeable.
 
 This duality is an important future requirement; just like I want to use skills with multiple cli's
+
+--- 
+
+# generate specific skills
+
+Generate specific skills for the different scenatrio's
+
+make a skill generator, that makes specific skills from a configuration
+
+repo
+- azure devops
+- github
+
+pbi's
+- github issues
+- azure devops boards
+- 
+
