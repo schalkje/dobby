@@ -2,6 +2,33 @@
 
 Agentic DevOps — a collection of agent **skills** that automate the Azure DevOps PBI lifecycle (create → propose-spec → close-with-evidence) plus generic OpenSpec workflow helpers.
 
+## Prerequisites
+
+You need the OpenSpec CLI installed to use the OpenSpec workflow skills (`openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`) and `dobby-propose-from-pbi`.
+
+### Install OpenSpec CLI
+
+Install from npm:
+
+```bash
+npm install -g @openspec/cli
+```
+
+If you prefer not to install globally, use `npx`:
+
+```bash
+npx @openspec/cli --help
+```
+
+Verify the installation:
+
+```bash
+openspec --version
+openspec list --json
+```
+
+If the `openspec` command is not found after global install, restart your terminal so your PATH updates.
+
 ## Skill layout
 
 Every skill has one canonical source folder and two host-discovery copies:
@@ -81,3 +108,27 @@ Interviews you relentlessly about a plan or design until you reach a shared unde
 - **Prerequisites**: None.
 - **Example**: `grill me on this plan`
 - **Source**: [`skills/grill-me/SKILL.md`](skills/grill-me/SKILL.md)
+
+### grill-pbi · Copilot CLI + Claude Code
+
+Stress-tests a PBI or issue's requirements, acceptance criteria, and scope. Use after creating or refining a work item.
+
+- **Prerequisites**: `az` CLI (ADO) or `gh` CLI (GitHub) for fetching the work item.
+- **Example**: `grill this PBI` or `stress-test the requirements for issue 42`
+- **Source**: [`skills/grill-pbi/SKILL.md`](skills/grill-pbi/SKILL.md)
+
+### grill-proposal · Copilot CLI + Claude Code
+
+Stress-tests an OpenSpec proposal's scope, goals, and feasibility before implementation begins.
+
+- **Prerequisites**: `openspec` CLI.
+- **Example**: `grill this proposal` or `challenge the scope of add-rate-limiter`
+- **Source**: [`skills/grill-proposal/SKILL.md`](skills/grill-proposal/SKILL.md)
+
+### grill-design · Copilot CLI + Claude Code
+
+Stress-tests an OpenSpec design's architecture, trade-offs, and implementation risks.
+
+- **Prerequisites**: `openspec` CLI.
+- **Example**: `grill this design` or `review the architecture for add-rate-limiter`
+- **Source**: [`skills/grill-design/SKILL.md`](skills/grill-design/SKILL.md)

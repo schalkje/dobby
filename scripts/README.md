@@ -41,10 +41,12 @@ Every dobby skill reads `.dobby/config.json` to learn which tracker the project 
 
 ```jsonc
 {
-  // Routing key. Required. Either "ado" or "github".
+  // Routing key. Required. One of "ado", "github", or "combined".
+  // "combined" means ADO for work items + GitHub for repo/PRs.
   "backend": "ado",
 
-  // Populated when backend = "ado". Mirrors the old azdo-defaults.json.
+  // Populated when backend = "ado" or "combined".
+  // Mirrors the old azdo-defaults.json.
   "ado": {
     "organization": "https://dev.azure.com/myorg/",
     "project": "MyProject",
@@ -58,17 +60,26 @@ Every dobby skill reads `.dobby/config.json` to learn which tracker the project 
     }
   },
 
-  // Populated when backend = "github". Absent otherwise.
+  // Populated when backend = "github" or "combined".
   "github": {
     "owner": "vanlanschot",
     "repo": "strada",
     "defaultLabels": ["needs-triage"],
     "projectNumber": 7
+  },
+
+  // Optional. Controls git-worktree-based parallel development.
+  // When enabled, each PBI gets its own worktree directory instead
+  // of using `git checkout -b`.
+  "worktree": {
+    "enabled": false,
+    // Custom worktree root. Default: <repo-parent>/<repo-name>-worktrees/
+    "root": "../my-repo-worktrees"
   }
 }
 ```
 
-Only the active backend's block is required to be populated. The other may be omitted entirely.
+For `"ado"` or `"github"` backends, only the active backend's block is required. For `"combined"`, both `ado` and `github` blocks must be populated. The `worktree` block is optional for any backend.
 
 ### `migrate-dobby-config.py`
 

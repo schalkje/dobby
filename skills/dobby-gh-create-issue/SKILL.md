@@ -210,6 +210,14 @@ If yes, update `.dobby/config.json` so the `github` block contains the current v
 - Use `--output json` or `--json` on all `gh` commands for reliable parsing.
 - Include `--repo "<owner>/<repo>"` on all `gh` commands rather than relying on the implicit current-directory inference.
 
+## Optional Quality Gate
+
+After successful issue creation, suggest:
+
+> **Optional:** Run `grill-pbi` to stress-test the requirements and acceptance criteria before moving to refinement or proposal generation.
+
+Do not invoke `grill-pbi` automatically — only suggest it. The user decides whether to grill.
+
 ## Usage Examples
 
 **Full specification:**

@@ -29,7 +29,8 @@
       "Bash(cp -r skills/dobby-propose-from-pbi skills/dobby-ado-propose-from-pbi)",
       "Bash(gh auth *)",
       "Bash(echo \"---exit=$?\")",
-      "Bash(openspec archive *)"
+      "Bash(openspec archive *)",
+      "Bash(gh issue *)"
     ]
   }
 }
