@@ -4,3 +4,6 @@
 # Python bytecode from scripts/
 __pycache__/
 *.pyc
+
+# Generated scenario skill sets (inspection artifact from `build-skills.py build`)
+build/

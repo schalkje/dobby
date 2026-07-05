@@ -1,0 +1,59 @@
+{
+  "_doc": "Per-scenario assembly manifest for scripts/build-skills.py. Maps each user-facing skill to its source folder (under skills/) and the _lib scripts it bundles. 'reuse' points a combined-scenario skill at another scenario's assembled result. 'seam' weaves a fragment into a reused source at a named anchor (stripped from output otherwise). Owners in 'lib' decide where a shared script physically lands in output; non-owner skills reference the owner skill's scripts/ path. Schema is documented in scripts/README.md.",
+
+  "userFacingSkills": [
+    "dobby-create-pbi",
+    "dobby-update-pbi",
+    "dobby-propose-from-pbi",
+    "dobby-close-pbi",
+    "dobby-implement-pbi"
+  ],
+
+  "common": [
+    "dobby-worktree",
+    "grill-design",
+    "grill-me",
+    "grill-pbi",
+    "grill-proposal",
+    "openspec-apply-change",
+    "openspec-archive-change",
+    "openspec-explore",
+    "openspec-propose"
+  ],
+
+  "lib": {
+    "azdo-update-fields.py":    { "owner": "dobby-create-pbi" },
+    "azdo-add-comment.py":      { "owner": "dobby-close-pbi" },
+    "azdo-add-dev-links.py":    { "owner": "dobby-close-pbi" },
+    "azdo-delete-comment.py":   { "owner": "dobby-close-pbi" },
+    "azdo-upload-attachment.py":{ "owner": "dobby-close-pbi" },
+    "evidence-store.py":        { "owner": "dobby-close-pbi" },
+    "azdo-get-comments.py":     { "owner": "dobby-update-pbi" }
+  },
+
+  "scenarios": {
+    "ado": {
+      "dobby-create-pbi":       { "source": "ado/dobby-create-pbi",       "scripts": ["azdo-update-fields.py"] },
+      "dobby-update-pbi":       { "source": "ado/dobby-update-pbi",       "scripts": ["azdo-update-fields.py", "azdo-get-comments.py"] },
+      "dobby-propose-from-pbi": { "source": "ado/dobby-propose-from-pbi", "scripts": ["azdo-update-fields.py"] },
+      "dobby-close-pbi":        { "source": "ado/dobby-close-pbi",        "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py", "evidence-store.py"] },
+      "dobby-implement-pbi":    { "source": "ado/dobby-implement-pbi",    "scripts": ["azdo-add-comment.py", "azdo-upload-attachment.py", "azdo-add-dev-links.py"] }
+    },
+
+    "github": {
+      "dobby-create-pbi":       { "source": "github/dobby-create-pbi" },
+      "dobby-update-pbi":       { "source": "github/dobby-update-pbi" },
+      "dobby-propose-from-pbi": { "source": "github/dobby-propose-from-pbi" },
+      "dobby-close-pbi":        { "source": "github/dobby-close-pbi" },
+      "dobby-implement-pbi":    { "source": "github/dobby-implement-pbi" }
+    },
+
+    "combined": {
+      "dobby-create-pbi":       { "reuse": "ado" },
+      "dobby-update-pbi":       { "reuse": "ado" },
+      "dobby-propose-from-pbi": { "reuse": "ado" },
+      "dobby-close-pbi":        { "source": "combined/dobby-close-pbi", "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py", "evidence-store.py"] },
+      "dobby-implement-pbi":    { "reuse": "github", "seam": { "anchor": "dobby:combined-seam:link-pbi-to-pr", "fragment": "combined/_fragments/link-pbi-to-pr.md", "scripts": ["azdo-add-dev-links.py"] } }
+    }
+  }
+}
