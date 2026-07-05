@@ -29,19 +29,35 @@ openspec list --json
 
 If the `openspec` command is not found after global install, restart your terminal so your PATH updates.
 
+## Configure skills for your project
+
+A project targets one **scenario** — `ado` (Azure DevOps), `github`, or `combined` (GitHub repo/PRs + ADO boards). Dobby assembles a flat, specialized skill set for that scenario; there is no runtime backend dispatcher.
+
+On Windows/PowerShell, the `dobby.ps1` wrapper in the repo root is the easiest entry point:
+
+```powershell
+.\dobby.ps1 init                       # interactive: prompts for target project + scenario
+.\dobby.ps1 init ..\my-app github      # scaffold the github scenario into ..\my-app
+.\dobby.ps1 init ..\my-app github -Config   # ...and drop a .dobby/config.json skeleton to fill in
+```
+
+`init` writes the scenario's skills into the target project's `.claude/skills/` (Claude Code) and `.github/skills/` (GitHub Copilot CLI). The equivalent without the wrapper is `python scripts/build-skills.py init <target> <scenario>`.
+
 ## Skill layout
 
-Every skill has one canonical source folder and two host-discovery copies:
+Skills are **assembled per scenario at build time** from three source tiers under `skills/`:
 
 | Path | Role |
 |---|---|
-| [`skills/<name>/`](skills/) | Canonical source. **Edit only here.** |
-| `.github/skills/<name>/` | Copy for **GitHub Copilot CLI** discovery. Generated. |
-| `.claude/skills/<name>/` | Copy for **Claude Code** discovery. Generated. |
+| [`skills/_lib/`](skills/) | Shared helper scripts, bundled into a scenario only when used. |
+| [`skills/_common/`](skills/) | Scenario-independent skills, copied into every scenario. |
+| [`skills/{ado,github,combined}/`](skills/) | Scenario-specialized prose, under the user-facing names. |
+| [`skills/manifest.json`](skills/manifest.json) | The assembly contract (source / reuse per scenario). |
+| `.github/skills/<name>/`, `.claude/skills/<name>/` | **Generated** host-discovery copies (dobby's own = the github scenario). Do not edit. |
 
-After editing any skill, run `python scripts/sync-skills.py` before committing. To verify a clean tree, run `python scripts/check-skill-sync.py` (exits non-zero on drift).
+After editing any source, regenerate dobby's own copies with `python scripts/build-skills.py dev` (or `.\dobby.ps1 dev`) before committing, and verify a clean tree with `python scripts/check-skill-sync.py` (or `.\dobby.ps1 check`).
 
-See [`scripts/README.md`](scripts/README.md) for details.
+See [`scripts/README.md`](scripts/README.md) for the generator modes, the manifest schema, and the `dobby.ps1` wrapper.
 
 ## Skill catalog
 

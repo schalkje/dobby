@@ -32,6 +32,8 @@ python scripts/build-skills.py dev
 python scripts/check-skill-sync.py
 ```
 
+On Windows/PowerShell, `dobby.ps1` in the repo root wraps these (`.\dobby.ps1 dev`, `.\dobby.ps1 check`, `.\dobby.ps1 build`, `.\dobby.ps1 init`).
+
 Run `dev` **before committing** any skill-source edit. See [`scripts/README.md`](scripts/README.md) for the manifest schema and the `build` / `init` modes.
 
 ## Architecture (the big picture you can't get from one file)
@@ -159,8 +161,8 @@ skills/{ado,github,combined,_common}/<skill-name>/SKILL.md
 skills/_lib/<script>.py
 
 # After editing a source, regenerate dobby's host copies and verify no drift
-python scripts/build-skills.py dev
-python scripts/check-skill-sync.py
+python scripts/build-skills.py dev        # or:  .\dobby.ps1 dev   (PowerShell wrapper)
+python scripts/check-skill-sync.py        # or:  .\dobby.ps1 check
 
 # Inspect all three scenarios without touching the committed copies
 python scripts/build-skills.py build      # → build/<scenario>/ (gitignored)

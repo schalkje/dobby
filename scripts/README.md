@@ -40,6 +40,18 @@ python scripts/build-skills.py init <target> <scenario>  # scaffold a scenario i
 python scripts/build-skills.py dev                   # self-install the github scenario into dobby's own .claude + .github
 ```
 
+**Convenience wrapper — `dobby.ps1` (repo root).** On Windows/PowerShell you can drive all of the above through `dobby.ps1` instead of remembering the `python` invocations. It finds Python for you and resolves paths against its own location, so it works from any directory:
+
+```powershell
+.\dobby.ps1 init [<target>] [<scenario>]   # scaffold a scenario (prompts when args are omitted)
+.\dobby.ps1 dev                            # regenerate dobby's own host copies (github scenario)
+.\dobby.ps1 build [--out <dir>]            # emit all three scenarios to build/<scenario>/
+.\dobby.ps1 check                          # run check-skill-sync.py
+.\dobby.ps1 help                           # usage
+```
+
+`init` also offers to drop a `.dobby/config.json` skeleton for the chosen scenario (placeholder connection details to fill in). Use `-Config` / `-NoConfig` to decide without the prompt (handy in scripts), and `-Force` to overwrite an existing config. Example: `.\dobby.ps1 init ..\my-app github -Config`.
+
 After assembling each `SKILL.md`, the generator runs a **forbidden-pattern lint** (template/macro syntax, leftover seam anchors, references to retired `dobby-ado-*`/`dobby-gh-*` skills, dispatcher/backend-routing prose) and **fails the build** if any appear — so the "flat, no-template" guarantees are self-enforcing.
 
 Dobby develops against the **github** flow (issues + PRs): its committed `.claude/skills/` and `.github/skills/` are the `dev` output. Run `dev` and commit the result after editing any github-scenario or `_common` source.
