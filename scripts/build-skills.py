@@ -134,18 +134,34 @@ def resolve_entry(manifest, scenario, skill, entry):
     return SKILLS / entry["source"], list(entry.get("scripts", [])), entry.get("seam"), scenario
 
 
+def owned_names(manifest):
+    """Every skill name dobby's generator manages (across all scenarios). Anything
+    NOT in this set — e.g. openspec-* installed by the OpenSpec CLI, or a project's
+    own skills — is foreign and the generator must never touch it."""
+    names = set(manifest["common"])
+    for sc in manifest["scenarios"].values():
+        names.update(sc.keys())
+    return names
+
+
 def assemble(manifest, scenario, dest_root):
-    """Assemble one scenario into dest_root (a flat dir of skill folders). Returns lint problems."""
+    """Assemble one scenario into dest_root (a flat dir of skill folders).
+
+    Non-destructive: only dobby-owned skill folders are written, and only
+    dobby-owned folders that don't belong to this scenario are pruned. Foreign
+    skill folders (openspec-*, a project's own skills) are left untouched.
+    Returns lint problems (a non-empty list means nothing was written)."""
     owner_of = {s: meta["owner"] for s, meta in manifest["lib"].items()}
     problems = []
-    rendered = {}  # name -> text
+    rendered = {}   # name -> SKILL.md text
+    sources = {}    # name -> source dir (for templates / aux files)
     used_scripts = {}  # script -> owner (collected for bundling)
 
     # 1. scenario-independent skills (verbatim, name = folder)
     for name in manifest["common"]:
         src = SKILLS / "_common" / name
         rendered[name] = render_skill(name, src, [], owner_of, source_label=f"_common/{name}")
-        copy_aux(src, dest_root / name)
+        sources[name] = src
 
     # 2. scenario-specialized work-item skills
     for skill, entry in manifest["scenarios"][scenario].items():
@@ -158,7 +174,7 @@ def assemble(manifest, scenario, dest_root):
             seam=seam, fragment_text=fragment_text,
             source_label=source_dir.relative_to(SKILLS).as_posix(),
         )
-        copy_aux(source_dir, dest_root / skill)
+        sources[skill] = source_dir
         for s in scripts:
             used_scripts[s] = owner_of[s]
 
@@ -168,13 +184,26 @@ def assemble(manifest, scenario, dest_root):
     if problems:
         return problems
 
-    # 4. write skills
+    dest_root.mkdir(parents=True, exist_ok=True)
+    current = set(rendered)
+
+    # 4. prune ONLY dobby-owned skills that don't belong to this scenario;
+    #    never remove foreign folders (openspec-*, project skills).
+    for name in owned_names(manifest) - current:
+        stale = dest_root / name
+        if stale.exists():
+            shutil.rmtree(stale)
+
+    # 5. write each owned skill into a clean per-skill folder (leaves siblings intact)
     for name, text in rendered.items():
         d = dest_root / name
+        if d.exists():
+            shutil.rmtree(d)
         d.mkdir(parents=True, exist_ok=True)
         (d / "SKILL.md").write_text(text, encoding="utf-8", newline="\n")
+        copy_aux(sources[name], d)
 
-    # 5. bundle each used _lib script once, under its owner skill's scripts/
+    # 6. bundle each used _lib script once, under its owner skill's scripts/
     for script, owner in used_scripts.items():
         owner_scripts = dest_root / owner / "scripts"
         owner_scripts.mkdir(parents=True, exist_ok=True)
@@ -184,7 +213,8 @@ def assemble(manifest, scenario, dest_root):
 
 
 def clean_skill_tree(path):
-    """Remove an existing generated skills dir (so deletions propagate)."""
+    """Fully reset a directory. Used only for the throwaway `build/` artifact —
+    never for a real project's host dirs (see assemble's non-destructive writes)."""
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
@@ -206,9 +236,10 @@ def cmd_build(args):
 
 
 def write_scenario_to_hosts(manifest, scenario, target_root):
+    # Non-destructive: assemble() only manages dobby-owned skill folders under each
+    # host dir, so anything already there (openspec-*, a project's own skills) survives.
     for host in HOSTS:
         dest = Path(target_root) / host
-        clean_skill_tree(dest)
         problems = assemble(manifest, scenario, dest)
         if problems:
             print(f"[FAIL] lint failed assembling '{scenario}' into {dest}:", file=sys.stderr)
@@ -216,6 +247,15 @@ def write_scenario_to_hosts(manifest, scenario, target_root):
             return 1
         print(f"[ok] wrote {scenario} -> {dest}")
     return 0
+
+
+def print_openspec_hint(target):
+    print()
+    print("dobby does not bundle the OpenSpec workflow skills -- install them with the")
+    print("OpenSpec CLI so they stay current and self-managed:")
+    print(f"  cd {target}")
+    print('  openspec init --tools "claude,github-copilot"')
+    print("(dobby's non-destructive init leaves those skills untouched on re-runs.)")
 
 
 def cmd_init(args):
@@ -226,7 +266,10 @@ def cmd_init(args):
     if not target.is_dir():
         print(f"[FAIL] target project directory does not exist: {target}", file=sys.stderr)
         return 2
-    return write_scenario_to_hosts(load_manifest(), args.scenario, target)
+    code = write_scenario_to_hosts(load_manifest(), args.scenario, target)
+    if code == 0:
+        print_openspec_hint(target)
+    return code
 
 
 def cmd_dev(args):

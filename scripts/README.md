@@ -11,7 +11,7 @@ Dobby skills are **assembled per scenario at build time** rather than routed at 
 | Path | Role |
 |---|---|
 | `skills/_lib/` | Shared helper scripts (`azdo-*.py`, `evidence-store.py`), authored once; bundled into a scenario only when used. |
-| `skills/_common/` | Scenario-independent skills (`openspec-*`, `grill-*`, `dobby-worktree`); copied into **every** scenario. |
+| `skills/_common/` | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`); copied into **every** scenario. (The `openspec-*` skills are **not** here — they're installed per-project by the OpenSpec CLI.) |
 | `skills/ado/` | ADO-specialized skill prose, under the user-facing names (`dobby-{create,update,propose,close,implement}-pbi`). |
 | `skills/github/` | GitHub-specialized skill prose, same user-facing names. |
 | `skills/combined/` | Only the skills that genuinely span both backends (`dobby-close-pbi`), plus `_fragments/` woven into reused sources. |
@@ -40,6 +40,16 @@ python scripts/build-skills.py init <target> <scenario>  # scaffold a scenario i
 python scripts/build-skills.py dev                   # self-install the github scenario into dobby's own .claude + .github
 ```
 
+**Non-destructive.** `init` and `dev` manage only the skill folders dobby owns (the manifest's `common` + each scenario's keys). Foreign folders — the `openspec-*` skills, or a project's own — are left untouched, so it's safe to re-run `init` on a project that already has other skills. (Only `build/` is fully reset each run.)
+
+**OpenSpec skills are not bundled.** dobby ships only its own skills. The `openspec-*` workflow skills are installed per-project with the OpenSpec CLI, which writes them straight into `.claude/skills/` and `.github/skills/`:
+
+```bash
+openspec init --tools "claude,github-copilot"   # run in the target project; quote the list
+```
+
+`build-skills.py init` prints this reminder; `dobby.ps1 init` can run it for you (`-OpenSpec`). Keep them current with `openspec update`. In this repo the generated `openspec-*` skill folders are gitignored.
+
 **Convenience wrapper — `dobby.ps1` (repo root).** On Windows/PowerShell you can drive all of the above through `dobby.ps1` instead of remembering the `python` invocations. It finds Python for you and resolves paths against its own location, so it works from any directory:
 
 ```powershell
@@ -50,7 +60,7 @@ python scripts/build-skills.py dev                   # self-install the github s
 .\dobby.ps1 help                           # usage
 ```
 
-`init` also offers to drop a `.dobby/config.json` skeleton for the chosen scenario (placeholder connection details to fill in). Use `-Config` / `-NoConfig` to decide without the prompt (handy in scripts), and `-Force` to overwrite an existing config. Example: `.\dobby.ps1 init ..\my-app github -Config`.
+`init` also offers to (a) drop a `.dobby/config.json` skeleton for the chosen scenario and (b) run `openspec init` in the target to install the OpenSpec workflow skills. Drive both without prompts for scripting: `-Config` / `-NoConfig` (and `-Force` to overwrite an existing config), `-OpenSpec` / `-NoOpenSpec`. Example: `.\dobby.ps1 init ..\my-app github -Config -OpenSpec`.
 
 After assembling each `SKILL.md`, the generator runs a **forbidden-pattern lint** (template/macro syntax, leftover seam anchors, references to retired `dobby-ado-*`/`dobby-gh-*` skills, dispatcher/backend-routing prose) and **fails the build** if any appear — so the "flat, no-template" guarantees are self-enforcing.
 

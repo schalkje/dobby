@@ -1,5 +1,5 @@
 {
-  "_doc": "Per-scenario assembly manifest for scripts/build-skills.py. Maps each user-facing skill to its source folder (under skills/) and the _lib scripts it bundles. 'reuse' points a combined-scenario skill at another scenario's assembled result. 'seam' weaves a fragment into a reused source at a named anchor (stripped from output otherwise). Owners in 'lib' decide where a shared script physically lands in output; non-owner skills reference the owner skill's scripts/ path. Schema is documented in scripts/README.md.",
+  "_doc": "Per-scenario assembly manifest for scripts/build-skills.py. Maps each user-facing skill to its source folder (under skills/) and the _lib scripts it bundles. 'reuse' points a combined-scenario skill at another scenario's assembled result. 'seam' weaves a fragment into a reused source at a named anchor (stripped from output otherwise). Owners in 'lib' decide where a shared script physically lands in output; non-owner skills reference the owner skill's scripts/ path. The generator is non-destructive: it only manages the skill names listed here ('common' + each scenario's keys) and never touches foreign skill folders such as the openspec-* skills, which are installed per-project via `openspec init` rather than bundled by dobby. Schema is documented in scripts/README.md.",
 
   "userFacingSkills": [
     "dobby-create-pbi",
@@ -14,11 +14,7 @@
     "grill-design",
     "grill-me",
     "grill-pbi",
-    "grill-proposal",
-    "openspec-apply-change",
-    "openspec-archive-change",
-    "openspec-explore",
-    "openspec-propose"
+    "grill-proposal"
   ],
 
   "lib": {

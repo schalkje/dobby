@@ -14,14 +14,21 @@
 #   .\dobby.ps1 check                          Verify committed host copies are in sync.
 #   .\dobby.ps1 help                           Show this help.
 #
-# init switches (skip the interactive config prompt — useful for scripting):
+# dobby does NOT bundle the OpenSpec workflow skills — install them per-project with
+# the OpenSpec CLI. `init` offers to run `openspec init` for you (and always prints
+# the manual command). dobby's init is non-destructive: it only manages dobby's own
+# skills and leaves openspec-* / your project's skills untouched.
+#
+# init switches (skip the interactive prompts — useful for scripting):
 #   -Config      Write a .dobby/config.json skeleton into the target.
 #   -NoConfig    Do not write a config skeleton.
 #   -Force       Overwrite an existing .dobby/config.json (with -Config).
+#   -OpenSpec    Run `openspec init --tools "claude,github-copilot"` in the target.
+#   -NoOpenSpec  Skip it (just print the manual command).
 #
 # Examples:
-#   .\dobby.ps1 init                           Interactive: prompts for target + scenario.
-#   .\dobby.ps1 init ..\my-app github -Config  Scaffold github + write a config skeleton.
+#   .\dobby.ps1 init                                   Interactive: prompts for everything.
+#   .\dobby.ps1 init ..\my-app github -Config -OpenSpec  Scaffold + config + openspec, no prompts.
 #
 # Works from any working directory — paths resolve against the script's own location.
 # Requires Python 3 (standard library only; no packages).
@@ -36,6 +43,9 @@ param(
     [switch]$NoConfig,
     # init only: overwrite an existing .dobby/config.json when writing the skeleton.
     [switch]$Force,
+    # init only: run / skip `openspec init` in the target without prompting.
+    [switch]$OpenSpec,
+    [switch]$NoOpenSpec,
 
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
     [string[]]$Rest = @()
@@ -64,7 +74,7 @@ $BuildSkills = Join-Path $RepoRoot 'scripts/build-skills.py'
 $CheckSync = Join-Path $RepoRoot 'scripts/check-skill-sync.py'
 
 function Show-Help {
-    Get-Content -Path $PSCommandPath -TotalCount 22 |
+    Get-Content -Path $PSCommandPath -TotalCount 45 |
         Where-Object { $_ -match '^#' -and $_ -notmatch '^#!' } |
         ForEach-Object { $_ -replace '^#\s?', '' }
 }
@@ -177,7 +187,45 @@ function Invoke-Init {
 
     if ($writeConfig) { Write-ConfigSkeleton -TargetRoot $target -Scenario $scenario -Force:$Force }
     else { Write-Host "  No config skeleton written. The skills collect connection details on first run." }
+
+    Install-OpenSpec -TargetRoot $target
     return 0
+}
+
+# dobby does not bundle the OpenSpec workflow skills; install them per-project with the
+# OpenSpec CLI. Runs `openspec init` when asked/confirmed, otherwise prints the command.
+function Install-OpenSpec {
+    param([string]$TargetRoot)
+
+    $manualCmd = 'openspec init --tools "claude,github-copilot"'
+    $hint = {
+        Write-Host ""
+        Write-Host "OpenSpec workflow skills are installed separately (dobby leaves them untouched):" -ForegroundColor Cyan
+        Write-Host "  cd `"$TargetRoot`""
+        Write-Host "  $manualCmd"
+    }
+
+    $run = $false
+    if ($OpenSpec) { $run = $true }
+    elseif ($NoOpenSpec) { $run = $false }
+    else {
+        $answer = Read-Prompt "Install the OpenSpec workflow into the target now (openspec init)? (y/N)" 'n'
+        $run = $answer -match '^(y|yes)$'
+    }
+
+    if (-not $run) { & $hint; return }
+
+    $openspec = Get-Command openspec -ErrorAction SilentlyContinue
+    if (-not $openspec) {
+        Write-Host "  openspec CLI not found on PATH. Install it (npm i -g @openspec/cli), then run:" -ForegroundColor Yellow
+        & $hint
+        return
+    }
+
+    Push-Location $TargetRoot
+    # Quote the list as one token — a bare comma is PowerShell's array operator.
+    try { & $openspec.Source init --tools 'claude,github-copilot' }
+    finally { Pop-Location }
 }
 
 switch ($Command.ToLowerInvariant()) {

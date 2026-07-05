@@ -31,22 +31,26 @@ def _walk_relative(root: Path) -> list[Path]:
     return sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
 
 
-def _diff_trees(expected_root: Path, actual_root: Path) -> list[str]:
+def _diff_skill(expected_dir: Path, actual_dir: Path, label: str) -> list[str]:
+    """Diff one skill folder. Foreign folders are never passed here."""
     issues: list[str] = []
-    expected = set(_walk_relative(expected_root)) if expected_root.exists() else set()
-    actual = set(_walk_relative(actual_root)) if actual_root.exists() else set()
+    expected = set(_walk_relative(expected_dir)) if expected_dir.exists() else set()
+    actual = set(_walk_relative(actual_dir)) if actual_dir.exists() else set()
     for rel in sorted(expected - actual):
-        issues.append(f"missing in committed copy: {actual_root / rel}")
+        issues.append(f"missing in committed copy: {actual_dir / rel}")
     for rel in sorted(actual - expected):
-        issues.append(f"unexpected file in committed copy: {actual_root / rel}")
+        issues.append(f"unexpected file in committed copy: {actual_dir / rel}")
     for rel in sorted(expected & actual):
-        if not filecmp.cmp(expected_root / rel, actual_root / rel, shallow=False):
-            issues.append(f"content drift: {actual_root / rel}")
+        if not filecmp.cmp(expected_dir / rel, actual_dir / rel, shallow=False):
+            issues.append(f"content drift: {actual_dir / rel}")
     return issues
 
 
 def check() -> int:
     manifest = build_skills.load_manifest()
+    # Only dobby-owned skills are compared; foreign skills (openspec-*, a project's
+    # own) are intentionally ignored — the generator never manages them.
+    owned = sorted(set(manifest["common"]) | set(manifest["scenarios"]["github"].keys()))
     with tempfile.TemporaryDirectory(prefix="dobby-skill-check-") as tmp:
         tmp_root = Path(tmp)
         issues: list[str] = []
@@ -57,7 +61,8 @@ def check() -> int:
                 print("Skill generation FAILED its own lint:", file=sys.stderr)
                 print("\n".join(problems), file=sys.stderr)
                 return 2
-            issues.extend(_diff_trees(expected_root, REPO_ROOT / host))
+            for name in owned:
+                issues.extend(_diff_skill(expected_root / name, REPO_ROOT / host / name, name))
 
     if issues:
         print("Skill sync check FAILED. Drift between committed copies and the github scenario:")

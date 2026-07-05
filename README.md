@@ -36,12 +36,18 @@ A project targets one **scenario** — `ado` (Azure DevOps), `github`, or `combi
 On Windows/PowerShell, the `dobby.ps1` wrapper in the repo root is the easiest entry point:
 
 ```powershell
-.\dobby.ps1 init                       # interactive: prompts for target project + scenario
-.\dobby.ps1 init ..\my-app github      # scaffold the github scenario into ..\my-app
-.\dobby.ps1 init ..\my-app github -Config   # ...and drop a .dobby/config.json skeleton to fill in
+.\dobby.ps1 init                                    # interactive: prompts for target + scenario
+.\dobby.ps1 init ..\my-app github                   # scaffold the github scenario into ..\my-app
+.\dobby.ps1 init ..\my-app github -Config -OpenSpec # + config skeleton + install OpenSpec skills
 ```
 
-`init` writes the scenario's skills into the target project's `.claude/skills/` (Claude Code) and `.github/skills/` (GitHub Copilot CLI). The equivalent without the wrapper is `python scripts/build-skills.py init <target> <scenario>`.
+`init` writes the scenario's skills into the target project's `.claude/skills/` (Claude Code) and `.github/skills/` (GitHub Copilot CLI). It is **non-destructive** — it manages only dobby's own skills and leaves anything else in those dirs untouched, so it's safe to re-run. The equivalent without the wrapper is `python scripts/build-skills.py init <target> <scenario>`.
+
+**OpenSpec skills are separate.** dobby does not bundle the `openspec-*` workflow skills; install them per-project with the OpenSpec CLI (`dobby.ps1 init -OpenSpec` runs this for you, or do it manually):
+
+```bash
+openspec init --tools "claude,github-copilot"       # run in the target project
+```
 
 ## Skill layout
 
@@ -50,7 +56,7 @@ Skills are **assembled per scenario at build time** from three source tiers unde
 | Path | Role |
 |---|---|
 | [`skills/_lib/`](skills/) | Shared helper scripts, bundled into a scenario only when used. |
-| [`skills/_common/`](skills/) | Scenario-independent skills, copied into every scenario. |
+| [`skills/_common/`](skills/) | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`), copied into every scenario. |
 | [`skills/{ado,github,combined}/`](skills/) | Scenario-specialized prose, under the user-facing names. |
 | [`skills/manifest.json`](skills/manifest.json) | The assembly contract (source / reuse per scenario). |
 | `.github/skills/<name>/`, `.claude/skills/<name>/` | **Generated** host-discovery copies (dobby's own = the github scenario). Do not edit. |

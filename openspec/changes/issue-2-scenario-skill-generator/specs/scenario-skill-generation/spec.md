@@ -32,7 +32,8 @@ The repository SHALL organize skill sources into three tiers under `skills/`: `_
 
 #### Scenario: Scenario-independent skill comes from _common
 - **WHEN** the assembler builds any scenario
-- **THEN** each scenario-independent skill (the `openspec-*` workflow skills, the `grill-*` skills, and `dobby-worktree`) SHALL be sourced from `skills/_common/` and appear in every scenario's output
+- **THEN** each scenario-independent, dobby-authored skill (the `grill-*` skills and `dobby-worktree`) SHALL be sourced from `skills/_common/` and appear in every scenario's output
+- **AND** the `openspec-*` workflow skills SHALL NOT be bundled by dobby (they are installed per-project by the OpenSpec CLI)
 
 #### Scenario: Specialized prose comes from the scenario folder
 - **WHEN** the assembler builds the `ado` (or `github`) scenario
@@ -87,3 +88,17 @@ In `dev` mode (self-install), run within the dobby repository, the assembler SHA
 - **WHEN** the tool is run in `dev` mode inside the dobby repo
 - **THEN** dobby's own `.claude/skills/` and `.github/skills/` SHALL contain the **github** scenario's flat skill set
 - **AND** each generated `SKILL.md` SHALL carry a notice that it is generated from `skills/<scenario>/<skill>/SKILL.md` and SHALL NOT be edited directly
+
+### Requirement: init and dev are non-destructive to foreign skills
+
+In `init` and `dev` modes the assembler SHALL manage only the skill folders it owns (the manifest's `common` skills plus the chosen scenario's user-facing skills). It SHALL write or refresh those folders and prune only owned folders that do not belong to the chosen scenario. Any other skill folder present under the target's `.claude/skills/` or `.github/skills/` — for example the `openspec-*` skills installed by the OpenSpec CLI, or a project's own skills — SHALL be left untouched.
+
+#### Scenario: Foreign skills survive an init
+- **WHEN** the tool is run in `init` (or `dev`) mode against a target that already contains a non-dobby skill folder (such as `openspec-propose`)
+- **THEN** dobby's owned skills SHALL be written alongside it
+- **AND** the foreign skill folder and its contents SHALL remain unchanged
+
+#### Scenario: OpenSpec skills are installed separately
+- **WHEN** a project needs the OpenSpec workflow skills
+- **THEN** they SHALL be installed by the OpenSpec CLI (`openspec init`) into the same host directories
+- **AND** dobby's generator SHALL neither supply nor remove them, so the two skill sets coexist

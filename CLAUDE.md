@@ -15,7 +15,7 @@ Skills are **assembled per scenario at build time**, not routed at runtime. Sour
 | Path | Role |
 |---|---|
 | `skills/_lib/` | Shared helper scripts (`azdo-*.py`, `evidence-store.py`). Authored once; bundled into a scenario only when used. |
-| `skills/_common/` | Scenario-independent skills (`openspec-*`, `grill-*`, `dobby-worktree`). Copied into every scenario. |
+| `skills/_common/` | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`). Copied into every scenario. |
 | `skills/ado/`, `skills/github/`, `skills/combined/` | Scenario-specialized prose, under the user-facing names. |
 | `skills/manifest.json` | Assembly contract: per scenario, which source + `_lib` scripts make each skill. |
 | `.github/skills/<name>/`, `.claude/skills/<name>/` | **Generated** copies (dobby's own = the github scenario). Do not edit — edit the source tier and regenerate. |
@@ -50,7 +50,8 @@ skills/                     ← three tiers of source
 ├── _lib/        azdo-update-fields.py, azdo-add-comment.py, azdo-add-dev-links.py,
 │                azdo-upload-attachment.py, azdo-delete-comment.py, azdo-get-comments.py,
 │                evidence-store.py                       ← shared, bundled once per scenario when used
-├── _common/     openspec-*, grill-*, dobby-worktree     ← copied into every scenario
+├── _common/     grill-*, dobby-worktree                 ← copied into every scenario
+│                (openspec-* are NOT bundled — installed per-project via `openspec init`)
 ├── ado/         dobby-{create,update,propose,close,implement}-pbi   ← ADO-specialized prose
 ├── github/      dobby-{create,update,propose,close,implement}-pbi   ← GitHub-specialized prose
 ├── combined/    dobby-close-pbi  +  _fragments/link-pbi-to-pr.md    ← only what genuinely spans both
@@ -73,13 +74,17 @@ How the generator assembles a scenario (using `combined` as the interesting case
 4. Bundle each used `_lib` script once into its owner skill's `scripts/`; set the frontmatter `name` to the user-facing name; strip the seam anchor everywhere it isn't substituted.
 5. Lint every generated `SKILL.md` (no template syntax, no leftover anchor, no retired-backend-skill references, no dispatcher prose) and fail the build on any hit.
 
+The generator is **non-destructive** to a target's host dirs: it writes/refreshes only the skill folders it owns (the manifest's `common` + each scenario's keys) and prunes only owned folders that don't belong to the chosen scenario. Any other skill folder — the `openspec-*` skills, or a project's own — is left untouched. (Only the throwaway `build/` artifact is fully reset per run.)
+
 Connection details (org/project/team for ADO; owner/repo for GitHub) are still collected per-project by the generated skill on first run and persisted into the matching block of `.dobby/config.json`. For `"combined"`, both blocks must be populated.
 
 The user-facing skill names are preserved deliberately so existing muscle memory and natural-language intents continue to work — only the implementation behind them (flat vs dispatched) changed.
 
 ### How dobby and openspec skills fit together
 
-The `dobby-*` and `openspec-*` skills are **complementary**: `dobby-propose-from-pbi` bridges the two by generating an OpenSpec change directory (`openspec/changes/<name>/`) seeded from a real work item; `openspec-apply-change` then implements the tasks; `dobby-close-pbi` closes the work item when done and (optionally) archives the OpenSpec change.
+The `dobby-*` and `openspec-*` skills are **complementary**, but dobby does **not** bundle or ship the `openspec-*` skills — they are installed per-project by the OpenSpec CLI itself (`openspec init --tools "claude,github-copilot"`, which writes them straight into `.claude/skills/` and `.github/skills/`). dobby's generator is non-destructive so the two sets coexist. Together they bridge the workflow: `dobby-propose-from-pbi` generates an OpenSpec change directory (`openspec/changes/<name>/`) seeded from a real work item; `openspec-apply-change` then implements the tasks; `dobby-close-pbi` closes the work item when done and (optionally) archives the OpenSpec change.
+
+Keep them current with the OpenSpec CLI (`openspec update`), not through dobby. In this repo the `openspec-*` skill folders under `.claude/skills/` and `.github/skills/` are **gitignored** — run `openspec init` after cloning if you want them locally.
 
 ### GitHub close flow is PR-shaped
 
@@ -122,7 +127,9 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 - **Scenario is fixed at generation, not invocation**: the generator emits a flat, specialized skill set. There is no dispatcher and no runtime `backend` branch. The `backend` key in `.dobby/config.json` is a **record** of which scenario the skills were generated for, not a router.
 - **Reuse is explicit in `manifest.json`**: never fork a skill by copying its prose. If `combined` needs `ado`'s behavior, the manifest declares `reuse: "ado"`. `_lib` scripts are bundled once per scenario (de-duped by name) under an owner skill — preserving the shared-by-reference pattern.
 - **Generated output is flat and lint-clean**: one `SKILL.md` per user-facing name; no nested `Read … SKILL.md` backend routing, no `backend` branching, no template/macro syntax, no leftover `<!-- dobby:combined-seam:* -->` anchor. The generator's lint enforces this on every run.
-- **Edit sources, regenerate, commit**: edit under `skills/` (the right tier), run `python scripts/build-skills.py dev`, and commit the regenerated `.claude/skills/` + `.github/skills/`. `check-skill-sync.py` fails CI if they drift.
+- **Generator is non-destructive**: `init`/`dev` manage only dobby-owned skill folders (manifest `common` + scenario keys) and never delete or overwrite foreign folders (openspec-*, a project's own). Safe to re-run on a project that has other skills. Only `build/` is fully reset.
+- **dobby does not ship openspec skills**: the `openspec-*` skills are installed per-project by the OpenSpec CLI (`openspec init`), kept current with `openspec update`, and gitignored in this repo. `_common` holds only dobby-authored scenario-independent skills (`grill-*`, `dobby-worktree`).
+- **Edit sources, regenerate, commit**: edit under `skills/` (the right tier), run `python scripts/build-skills.py dev`, and commit the regenerated `.claude/skills/` + `.github/skills/`. `check-skill-sync.py` (which compares only dobby-owned skills) fails CI if they drift.
 - **Combined mode**: `backend: "combined"` means ADO for work items + GitHub for repo/PRs. Both `ado` and `github` config blocks must be populated, and both identities (`az account show` + `gh auth status`) are verified at the start of the combined skills.
 - **GitHub close requires a PR**: the github-scenario `dobby-close-pbi` refuses to proceed unless an open PR references the issue via `Closes #<N>`, `Fixes #<N>`, or `Resolves #<N>`. Closure happens at PR merge, not by `gh issue close`.
 - **Two-step ADO PBI creation**: `az boards work-item create` (basic fields) → `azdo-update-fields.py` (markdown body). Never pass `--description` to `az boards work-item create`; it will truncate.
