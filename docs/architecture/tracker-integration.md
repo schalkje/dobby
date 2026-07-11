@@ -24,10 +24,9 @@ Every tracker operation starts at a **dispatcher** skill, which reads `.dobby/co
 ### Resolution rules
 
 1. Read `.dobby/config.json`
-2. If missing but `.dobby/azdo-defaults.json` exists → run `scripts/migrate-dobby-config.py` to migrate
-3. If missing entirely → ask the user "Azure DevOps or GitHub?" and persist their answer
-4. If `backend` holds an unrecognized value → **stop and ask** (never guess)
-5. Load the matching backend skill and follow its instructions
+2. If missing entirely → ask the user "Azure DevOps or GitHub?" and persist their answer
+3. If `backend` holds an unrecognized value → **stop and ask** (never guess)
+4. Load the matching backend skill and follow its instructions
 
 ### Config ownership
 
@@ -57,7 +56,6 @@ The `az boards` CLI has hard limitations that the ADO skills work around with Py
 | `azdo-upload-attachment.py` | Uploads images as work-item attachments, returns URLs for splicing into comments. |
 | `azdo-add-dev-links.py` | Adds Development links (commit/branch/PR). Chooses ArtifactLink vs Hyperlink based on ADO reachability. |
 | `azdo-delete-comment.py` | Deletes a comment from a work item's discussion thread. |
-| `evidence-store.py` | Stages before/after screenshots locally under `.dobby/evidence/` (gitignored). |
 
 All scripts share: `--help` support, JSON output, retry-with-backoff on 429/502/503/504.
 

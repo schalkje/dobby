@@ -55,22 +55,10 @@ The system SHALL set the description fields in skill frontmatter such that the d
 - **WHEN** an LLM-based skill picker reads a backend skill's description
 - **THEN** the description SHALL begin with "Internal —" and SHALL note that the skill is invoked by the corresponding dispatcher rather than directly
 
-### Requirement: One-time migration from legacy config file
-The system SHALL provide a migration script that transforms an existing `.dobby/azdo-defaults.json` into `.dobby/config.json` without data loss. The migration SHALL be idempotent and SHALL NOT overwrite an existing `.dobby/config.json` unless the user explicitly forces it.
+### Requirement: Legacy config file is not consulted
+The system SHALL NOT read the retired legacy config file `.dobby/azdo-defaults.json`. (The one-time migration script that converted it to `.dobby/config.json` was retired in July 2026 after all known projects migrated.)
 
-#### Scenario: Migration on a project with only the legacy file
-- **WHEN** the migration script runs in a project where `.dobby/azdo-defaults.json` exists and `.dobby/config.json` does not
-- **THEN** the script SHALL read the legacy file, write a new `.dobby/config.json` with shape `{ "backend": "ado", "ado": <legacy content> }`, and remove the legacy file only after the new file is successfully written
-
-#### Scenario: Migration is a no-op when already migrated
-- **WHEN** the migration script runs in a project where `.dobby/config.json` already exists
-- **THEN** the script SHALL exit successfully without modifying any file and SHALL print a clear "already migrated" message
-
-#### Scenario: Migration refuses to overwrite without force
-- **WHEN** both `.dobby/azdo-defaults.json` and `.dobby/config.json` exist and the script is run without `--force`
-- **THEN** the script SHALL exit with a non-zero status, refuse to overwrite, and instruct the user to inspect both files manually
-
-#### Scenario: Migration triggered automatically by dispatcher
-- **WHEN** any dispatcher detects `.dobby/azdo-defaults.json` and no `.dobby/config.json` on first invocation
-- **THEN** the dispatcher SHALL run the migration script before proceeding to route
+#### Scenario: Legacy file present alongside current config
+- **WHEN** a skill runs in a project that still contains a stray `.dobby/azdo-defaults.json`
+- **THEN** the skill SHALL read only `.dobby/config.json` and SHALL ignore the legacy file
 

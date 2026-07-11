@@ -52,10 +52,9 @@ Dobby uses four distinct skill patterns:
 Dispatchers are the public-facing skills. They never call tracker APIs directly. Their sole job is routing:
 
 1. Read `.dobby/config.json`
-2. If missing but legacy `azdo-defaults.json` exists → migrate
-3. If missing entirely → ask the user for backend choice and persist
-4. If `backend` is unrecognized → stop, ask the user to fix
-5. Load the matching backend skill's `SKILL.md` and follow it
+2. If missing entirely → ask the user for backend choice and persist
+3. If `backend` is unrecognized → stop, ask the user to fix
+4. Load the matching backend skill's `SKILL.md` and follow it
 
 This keeps user-facing skill names stable (`dobby-create-pbi`) regardless of which backend is active.
 

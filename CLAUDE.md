@@ -14,7 +14,7 @@ Skills are **assembled per scenario at build time**, not routed at runtime. Sour
 
 | Path | Role |
 |---|---|
-| `skills/_lib/` | Shared helper scripts (`azdo-*.py`, `evidence-store.py`). Authored once; bundled into a scenario only when used. |
+| `skills/_lib/` | Shared helper scripts (`azdo-*.py`). Authored once; bundled into a scenario only when used. |
 | `skills/_common/` | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`). Copied into every scenario. |
 | `skills/ado/`, `skills/github/`, `skills/combined/` | Scenario-specialized prose, under the user-facing names. |
 | `skills/manifest.json` | Assembly contract: per scenario, which source + `_lib` scripts make each skill. |
@@ -48,8 +48,8 @@ A project targets exactly one scenario, so dobby specializes the skills for it *
 
 skills/                     ← three tiers of source
 ├── _lib/        azdo-update-fields.py, azdo-add-comment.py, azdo-add-dev-links.py,
-│                azdo-upload-attachment.py, azdo-delete-comment.py, azdo-get-comments.py,
-│                evidence-store.py                       ← shared, bundled once per scenario when used
+│                azdo-upload-attachment.py, azdo-delete-comment.py, azdo-get-comments.py
+│                                                        ← shared, bundled once per scenario when used
 ├── _common/     grill-*, dobby-worktree                 ← copied into every scenario
 │                (openspec-* are NOT bundled — installed per-project via `openspec init`)
 ├── ado/         dobby-{create,update,propose,close,implement}-pbi   ← ADO-specialized prose
@@ -106,7 +106,6 @@ All ADO helper scripts live in `skills/_lib/` and are bundled (once, into an own
 | `azdo-add-dev-links.py` | Adds Development links (commit / branch / PR) to a work item, choosing between ArtifactLink and Hyperlink based on whether the org's ADO can reach the repo. |
 | `azdo-delete-comment.py` | Deletes a work-item comment (used to "edit" a markdown comment by delete-then-repost, avoiding the HTML downgrade bug). |
 | `azdo-get-comments.py` | Fetches a work item's discussion thread (used by the ADO update/refine flow). |
-| `evidence-store.py` | Local-only: stages before/after screenshots under `.dobby/evidence/<work-item-id>/{before,after}/` (gitignored — may contain sensitive data). |
 
 All Azure DevOps scripts share the **same auth fallback chain** (`AZURE_DEVOPS_EXT_PAT` → `ADO_TOKEN` → `az account get-access-token`) and the same retry-with-backoff for HTTP 429/502/503/504. Keep that pattern when adding new ADO helper scripts.
 
@@ -120,7 +119,6 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 |---|---|
 | `scripts/build-skills.py` | The scenario-skill generator. `build` (all → `build/<scenario>/`), `init <target> <scenario>`, `dev` (github → dobby's own `.claude/skills/` + `.github/skills/`). |
 | `scripts/check-skill-sync.py` | Verifies dobby's committed host copies match the generator's `dev` (github) output. Exits non-zero with the drifted files on failure. |
-| `scripts/migrate-dobby-config.py` | One-time migration from `.dobby/azdo-defaults.json` to `.dobby/config.json`. Idempotent. Run manually. |
 
 ### Cross-skill invariants
 
@@ -175,9 +173,7 @@ python scripts/check-skill-sync.py        # or:  .\dobby.ps1 check
 python scripts/build-skills.py build      # → build/<scenario>/ (gitignored)
 
 # Smoke-test a helper script (Python 3, stdlib only — no pip install needed)
-python scripts/migrate-dobby-config.py --dry-run
 python skills/_lib/azdo-update-fields.py --help
-python skills/_lib/evidence-store.py list --work-item-id <id>
 
 # OpenSpec CLI (required for openspec-* and the dobby propose-from-* skills)
 openspec list --json
@@ -191,17 +187,6 @@ Required prerequisites for end-to-end runs:
 - **ADO-backed projects**: `az` CLI with the `azure-devops` extension (`az extension add --name azure-devops`), authenticated (`az login`).
 - **GitHub-backed projects**: `gh` CLI installed and authenticated (`gh auth login`).
 - **Both**: Python 3 (stdlib only); `openspec` CLI for the OpenSpec workflows.
-
-### Migrating from azdo-defaults.json
-
-If you're working in a project that still has the legacy `.dobby/azdo-defaults.json`, run the migration once:
-
-```bash
-python scripts/migrate-dobby-config.py --dry-run   # preview the result
-python scripts/migrate-dobby-config.py             # apply
-```
-
-The script wraps the legacy content as `{ "backend": "ado", "ado": <legacy> }` and removes the legacy file. Idempotent — safe to re-run.
 
 ## OpenSpec workflow
 
@@ -217,7 +202,6 @@ Archived changes go to `openspec/changes/archive/YYYY-MM-DD-<name>/`.
 ## Conventions specific to this repo
 
 - **Greenfield, no source code yet**: when asked to add functionality, check whether scaffolding exists; if not, propose a structure before generating files. There are no language/framework precedents to follow — ask before introducing any.
-- **`todo.md` is a brainstorming scratchpad, not a spec**: don't treat statements there as finalized requirements. Surface ambiguities back to the user.
 - **Commit trailer**: repository policy uses `Co-authored-by: Copilot` on commits.
 - **`.dobby/evidence/` is gitignored** because ADO before-capture screenshots may contain sensitive data — never commit anything from that directory.
 - **`docs/evidence/issue-<N>/` IS committed**: the GitHub close flow commits screenshots to the PR branch (under `docs/evidence/issue-<N>/`) so GitHub can render them inline in the PR description via `raw.githubusercontent.com`. These files survive PR merge into main. Prune periodically with a housekeeping commit if the directory grows large.

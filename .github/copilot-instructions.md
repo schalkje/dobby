@@ -15,26 +15,26 @@ When asked to make changes, first check whether the necessary scaffolding exists
 
 ## Skill layout
 
-Every skill has one canonical folder and two host-discovery copies:
+Skills are **assembled per scenario at build time** from tiered sources under `skills/` (`_lib`, `_common`, `ado`, `github`, `combined`, driven by `skills/manifest.json`). The host-discovery dirs hold generated copies:
 
 | Path | Role |
 |---|---|
-| `skills/<name>/` | **Canonical source.** Edit only here. |
-| `.github/skills/<name>/` | Copy for GitHub Copilot CLI discovery. Do not edit. |
-| `.claude/skills/<name>/` | Copy for Claude Code discovery. Do not edit. |
+| `skills/<tier>/<name>/` | **Canonical source.** Edit only here. |
+| `.github/skills/<name>/` | Generated copy for GitHub Copilot CLI discovery. Do not edit. |
+| `.claude/skills/<name>/` | Generated copy for Claude Code discovery. Do not edit. |
 
-Each host copy of a `SKILL.md` carries a notice immediately after the YAML frontmatter pointing back at the canonical source.
+Each generated `SKILL.md` carries a notice immediately after the YAML frontmatter pointing back at its scenario source.
 
-After any edit under `skills/<name>/`, regenerate the host copies before committing:
+After any edit under `skills/`, regenerate the host copies before committing:
 
 ```bash
-python scripts/sync-skills.py            # regenerate .github/skills/ and .claude/skills/
+python scripts/build-skills.py dev       # regenerate .github/skills/ and .claude/skills/ (github scenario)
 python scripts/check-skill-sync.py       # verify no drift (exits non-zero on drift)
 ```
 
 See [`scripts/README.md`](../scripts/README.md) for details.
 
-## Project intent (from `todo.md`)
+## Project intent
 
 Dobby is intended to be an **agentic DevOps assistant for Azure DevOps**, focused on the PBI (Product Backlog Item) lifecycle:
 
@@ -54,7 +54,6 @@ These stages are distinct **processes/agents**, not a single monolithic flow. Tr
 
 ## Conventions for working in this repo
 
-- `todo.md` is a **brainstorming scratchpad**, not a spec. Do not treat statements there as finalized requirements; surface ambiguities back to the user.
 - When introducing new tooling (language, package manager, framework, linter), **ask first** — there are no precedents to follow yet.
 - Keep `README.md` updated as real structure lands; right now it is a single-line placeholder.
 - Use the `Co-authored-by: Copilot` trailer on commits per repository policy.

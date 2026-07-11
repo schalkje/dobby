@@ -23,7 +23,6 @@
     "azdo-add-dev-links.py":    { "owner": "dobby-close-pbi" },
     "azdo-delete-comment.py":   { "owner": "dobby-close-pbi" },
     "azdo-upload-attachment.py":{ "owner": "dobby-close-pbi" },
-    "evidence-store.py":        { "owner": "dobby-close-pbi" },
     "azdo-get-comments.py":     { "owner": "dobby-update-pbi" }
   },
 
@@ -32,7 +31,7 @@
       "dobby-create-pbi":       { "source": "ado/dobby-create-pbi",       "scripts": ["azdo-update-fields.py"] },
       "dobby-update-pbi":       { "source": "ado/dobby-update-pbi",       "scripts": ["azdo-update-fields.py", "azdo-get-comments.py"] },
       "dobby-propose-from-pbi": { "source": "ado/dobby-propose-from-pbi", "scripts": ["azdo-update-fields.py"] },
-      "dobby-close-pbi":        { "source": "ado/dobby-close-pbi",        "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py", "evidence-store.py"] },
+      "dobby-close-pbi":        { "source": "ado/dobby-close-pbi",        "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py"] },
       "dobby-implement-pbi":    { "source": "ado/dobby-implement-pbi",    "scripts": ["azdo-add-comment.py", "azdo-upload-attachment.py", "azdo-add-dev-links.py"] }
     },
 
@@ -48,7 +47,7 @@
       "dobby-create-pbi":       { "reuse": "ado" },
       "dobby-update-pbi":       { "reuse": "ado" },
       "dobby-propose-from-pbi": { "reuse": "ado" },
-      "dobby-close-pbi":        { "source": "combined/dobby-close-pbi", "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py", "evidence-store.py"] },
+      "dobby-close-pbi":        { "source": "combined/dobby-close-pbi", "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py"] },
       "dobby-implement-pbi":    { "reuse": "github", "seam": { "anchor": "dobby:combined-seam:link-pbi-to-pr", "fragment": "combined/_fragments/link-pbi-to-pr.md", "scripts": ["azdo-add-dev-links.py"] } }
     }
   }

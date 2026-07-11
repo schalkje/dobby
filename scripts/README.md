@@ -10,7 +10,7 @@ Dobby skills are **assembled per scenario at build time** rather than routed at 
 
 | Path | Role |
 |---|---|
-| `skills/_lib/` | Shared helper scripts (`azdo-*.py`, `evidence-store.py`), authored once; bundled into a scenario only when used. |
+| `skills/_lib/` | Shared helper scripts (`azdo-*.py`), authored once; bundled into a scenario only when used. |
 | `skills/_common/` | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`); copied into **every** scenario. (The `openspec-*` skills are **not** here — they're installed per-project by the OpenSpec CLI.) |
 | `skills/ado/` | ADO-specialized skill prose, under the user-facing names (`dobby-{create,update,propose,close,implement}-pbi`). |
 | `skills/github/` | GitHub-specialized skill prose, same user-facing names. |
@@ -90,7 +90,6 @@ Generated skills read `.dobby/config.json` for the per-backend connection detail
   "backend": "ado",
 
   // Populated when backend = "ado" or "combined".
-  // Mirrors the old azdo-defaults.json.
   "ado": {
     "organization": "https://dev.azure.com/myorg/",
     "project": "MyProject",
@@ -106,11 +105,18 @@ Generated skills read `.dobby/config.json` for the per-backend connection detail
 
   // Populated when backend = "github" or "combined".
   "github": {
-    "owner": "vanlanschot",
-    "repo": "strada",
+    "owner": "myorg",
+    "repo": "my-repo",
     "defaultLabels": ["needs-triage"],
     "projectNumber": 7
   },
+
+  // Optional. Free-form reminders that `dobby-implement-pbi` reads at the
+  // start of a run and repeats back to the user (e.g. "run the linter before
+  // committing", "never push directly to main").
+  "userReminders": [
+    "<reminder text>"
+  ],
 
   // Optional. Controls git-worktree-based parallel development.
   // When enabled, each PBI gets its own worktree directory instead
@@ -123,21 +129,7 @@ Generated skills read `.dobby/config.json` for the per-backend connection detail
 }
 ```
 
-For `"ado"` or `"github"` backends, only the active backend's block is required. For `"combined"`, both `ado` and `github` blocks must be populated. The `worktree` block is optional for any backend.
-
-### `migrate-dobby-config.py`
-
-One-time migration from the legacy `.dobby/azdo-defaults.json` to the new `.dobby/config.json`. Reads the legacy file, wraps its contents in `{ "backend": "ado", "ado": <legacy> }`, writes the new file, and removes the legacy file only after the new file is written successfully.
-
-```bash
-python scripts/migrate-dobby-config.py              # migrate this project
-python scripts/migrate-dobby-config.py --dry-run    # print result, don't write
-python scripts/migrate-dobby-config.py --force      # allow overwriting existing config.json
-```
-
-Idempotent — safe to re-run. If `.dobby/config.json` already exists the script exits 0 with an "already migrated" message and changes nothing. If neither file exists (a fresh checkout) the script exits 0 without doing anything.
-
-Run it manually in any project that still has the legacy `.dobby/azdo-defaults.json`.
+For `"ado"` or `"github"` backends, only the active backend's block is required. For `"combined"`, both `ado` and `github` blocks must be populated. The `worktree` and `userReminders` blocks are optional for any backend.
 
 ## Why these scripts exist
 
