@@ -1,10 +1,10 @@
 # dobby
 
-Agentic DevOps — a collection of agent **skills** that automate the Azure DevOps PBI lifecycle (create → propose-spec → close-with-evidence) plus generic OpenSpec workflow helpers.
+Agentic DevOps — a collection of agent **skills** that automate the work-item lifecycle (create → propose-spec → implement → close-with-evidence) across **Azure DevOps** (PBIs) and **GitHub** (Issues). A project targets one scenario (`ado`, `github`, or `combined`) and dobby assembles a flat, specialized skill set for it.
 
 ## Prerequisites
 
-You need the OpenSpec CLI installed to use the OpenSpec workflow skills (`openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`) and `dobby-propose-from-pbi`.
+The `dobby-propose-from-pbi` skill and the OpenSpec workflow depend on the OpenSpec CLI. dobby does **not** bundle the `openspec-*` workflow skills — those are installed per-project by the OpenSpec CLI itself (see [Configure skills for your project](#configure-skills-for-your-project)). You still need the CLI on PATH for both.
 
 ### Install OpenSpec CLI
 
@@ -67,61 +67,55 @@ See [`scripts/README.md`](scripts/README.md) for the generator modes, the manife
 
 ## Skill catalog
 
+The catalog below is dobby's own skill set — the **github** scenario (issues + PRs), which is what dobby generates for itself. An `ado` or `combined` project gets the same user-facing names, specialized for that scenario; the descriptions here would read "PBI"/"Azure DevOps" instead of "issue"/"GitHub". Each entry links to its **source** tier (`skills/github/…` for backend-specialized prose, `skills/_common/…` for scenario-independent skills) — not the generated host copies under `.claude/skills/` and `.github/skills/`, which you never edit directly.
+
 ### dobby-create-pbi · Copilot CLI + Claude Code
 
-Creates a Product Backlog Item in Azure DevOps from a conversational request. Collects fields interactively (title, description, project, area path, iteration, parent), validates prerequisites, and creates the work item via the `az boards` CLI.
+Creates a GitHub Issue from a conversational request. Collects fields interactively (title, Description, Acceptance Criteria, labels, parent), validates prerequisites, and creates the issue via the `gh` CLI.
 
-- **Prerequisites**: Azure CLI with the `azure-devops` extension, authenticated (`az login`); Python 3.
-- **Example**: `Create a PBI titled "Add login page" in project MyProject under feature 1234`
-- **Source**: [`skills/dobby-create-pbi/SKILL.md`](skills/dobby-create-pbi/SKILL.md)
+- **Prerequisites**: `gh` CLI, authenticated (`gh auth login`).
+- **Example**: `Create an issue titled "Add login page" with acceptance criteria for happy path and validation`
+- **Source**: [`skills/github/dobby-create-pbi/SKILL.md`](skills/github/dobby-create-pbi/SKILL.md)
 
-### dobby-close-pbi · Copilot CLI + Claude Code
+### dobby-update-pbi · Copilot CLI + Claude Code
 
-Closes a Product Backlog Item in Azure DevOps. Gathers implementation evidence (before/after screenshots, dev links), posts a closing comment, sets state to **Done**, and optionally closes child tasks.
+Updates or refines a GitHub Issue's body (Description + Acceptance Criteria) via `gh issue edit`. Refinement mode synthesizes the existing body, discussion comments, and codebase context into a well-structured issue.
 
-- **Prerequisites**: Azure CLI with the `azure-devops` extension, authenticated (`az login`); Python 3.
-- **Example**: `Close PBI 12345 — I added before screenshots earlier and have the after shots ready`
-- **Source**: [`skills/dobby-close-pbi/SKILL.md`](skills/dobby-close-pbi/SKILL.md)
+- **Prerequisites**: `gh` CLI, authenticated (`gh auth login`).
+- **Example**: `Refine issue 42` or `update the acceptance criteria on issue 42`
+- **Source**: [`skills/github/dobby-update-pbi/SKILL.md`](skills/github/dobby-update-pbi/SKILL.md)
 
 ### dobby-propose-from-pbi · Copilot CLI + Claude Code
 
-Fetches an Azure DevOps PBI and generates an OpenSpec change (`proposal.md`, `design.md`, `tasks.md`) seeded from the work item, with a traceability line back to the PBI.
+Fetches a GitHub Issue and generates an OpenSpec change (`proposal.md`, `design.md`, `tasks.md`) seeded from the issue, with a traceability line back to it.
 
-- **Prerequisites**: Azure CLI with the `azure-devops` extension, authenticated (`az login`); `openspec` CLI; Python 3.
-- **Example**: `Generate an OpenSpec proposal from PBI 12345`
-- **Source**: [`skills/dobby-propose-from-pbi/SKILL.md`](skills/dobby-propose-from-pbi/SKILL.md)
+- **Prerequisites**: `gh` CLI, authenticated (`gh auth login`); `openspec` CLI.
+- **Example**: `Generate an OpenSpec proposal from issue 42`
+- **Source**: [`skills/github/dobby-propose-from-pbi/SKILL.md`](skills/github/dobby-propose-from-pbi/SKILL.md)
 
-### openspec-propose · Copilot CLI + Claude Code
+### dobby-implement-pbi · Copilot CLI + Claude Code
 
-Proposes a new OpenSpec change with proposal, design, specs, and tasks generated in one step. Use when you want to describe what to build and get a complete proposal ready for implementation.
+End-to-end lifecycle orchestrator: from branch creation through spec, implementation, evidence capture, PR, and closure. An adaptive checklist with resume/skip support. Delegates to `dobby-worktree` for the branch step when worktrees are enabled.
 
-- **Prerequisites**: `openspec` CLI.
-- **Example**: `Propose a change: add a rate limiter to the public API`
-- **Source**: [`skills/openspec-propose/SKILL.md`](skills/openspec-propose/SKILL.md)
+- **Prerequisites**: `gh` CLI, authenticated; `openspec` CLI; `git`.
+- **Example**: `Implement from issue: https://github.com/owner/repo/issues/42`
+- **Source**: [`skills/github/dobby-implement-pbi/SKILL.md`](skills/github/dobby-implement-pbi/SKILL.md)
 
-### openspec-apply-change · Copilot CLI + Claude Code
+### dobby-close-pbi · Copilot CLI + Claude Code
 
-Implements tasks from an existing OpenSpec change. Use to start, continue, or work through the tasks of a proposed change.
+Closes a GitHub Issue through its Pull Request: requires an open PR referencing the issue (`Closes #N`), commits before/after evidence to the PR branch under `docs/evidence/issue-<N>/`, embeds it inline in the PR description, and relies on close-on-merge (never calls `gh issue close`).
 
-- **Prerequisites**: `openspec` CLI.
-- **Example**: `Apply the change "add-rate-limiter"`
-- **Source**: [`skills/openspec-apply-change/SKILL.md`](skills/openspec-apply-change/SKILL.md)
+- **Prerequisites**: `gh` CLI, authenticated; an open PR that references the issue; `git`.
+- **Example**: `Close issue 42 — the PR is open and I have the after screenshots ready`
+- **Source**: [`skills/github/dobby-close-pbi/SKILL.md`](skills/github/dobby-close-pbi/SKILL.md)
 
-### openspec-archive-change · Copilot CLI + Claude Code
+### dobby-worktree · Copilot CLI + Claude Code
 
-Archives a completed OpenSpec change once implementation is finished, moving it under `openspec/changes/archive/YYYY-MM-DD-<name>/`.
+Manages git worktrees for parallel PBI development — create, list, and remove worktrees tied to work items. Used standalone or invoked by `dobby-implement-pbi` when `worktree.enabled` is set in `.dobby/config.json`.
 
-- **Prerequisites**: `openspec` CLI.
-- **Example**: `Archive the change "add-rate-limiter"`
-- **Source**: [`skills/openspec-archive-change/SKILL.md`](skills/openspec-archive-change/SKILL.md)
-
-### openspec-explore · Copilot CLI + Claude Code
-
-Explore mode — a thinking partner for working through ideas, investigating problems, and clarifying requirements before or during a change.
-
-- **Prerequisites**: `openspec` CLI.
-- **Example**: `Let's explore: what would it take to support multi-tenant queues?`
-- **Source**: [`skills/openspec-explore/SKILL.md`](skills/openspec-explore/SKILL.md)
+- **Prerequisites**: `git`.
+- **Example**: `Create a worktree for issue 42` or `list worktrees`
+- **Source**: [`skills/_common/dobby-worktree/SKILL.md`](skills/_common/dobby-worktree/SKILL.md)
 
 ### grill-me · Copilot CLI + Claude Code
 
@@ -129,15 +123,15 @@ Interviews you relentlessly about a plan or design until you reach a shared unde
 
 - **Prerequisites**: None.
 - **Example**: `grill me on this plan`
-- **Source**: [`skills/grill-me/SKILL.md`](skills/grill-me/SKILL.md)
+- **Source**: [`skills/_common/grill-me/SKILL.md`](skills/_common/grill-me/SKILL.md)
 
 ### grill-pbi · Copilot CLI + Claude Code
 
 Stress-tests a PBI or issue's requirements, acceptance criteria, and scope. Use after creating or refining a work item.
 
-- **Prerequisites**: `az` CLI (ADO) or `gh` CLI (GitHub) for fetching the work item.
+- **Prerequisites**: `gh` CLI (GitHub) or `az` CLI (ADO) for fetching the work item.
 - **Example**: `grill this PBI` or `stress-test the requirements for issue 42`
-- **Source**: [`skills/grill-pbi/SKILL.md`](skills/grill-pbi/SKILL.md)
+- **Source**: [`skills/_common/grill-pbi/SKILL.md`](skills/_common/grill-pbi/SKILL.md)
 
 ### grill-proposal · Copilot CLI + Claude Code
 
@@ -145,7 +139,7 @@ Stress-tests an OpenSpec proposal's scope, goals, and feasibility before impleme
 
 - **Prerequisites**: `openspec` CLI.
 - **Example**: `grill this proposal` or `challenge the scope of add-rate-limiter`
-- **Source**: [`skills/grill-proposal/SKILL.md`](skills/grill-proposal/SKILL.md)
+- **Source**: [`skills/_common/grill-proposal/SKILL.md`](skills/_common/grill-proposal/SKILL.md)
 
 ### grill-design · Copilot CLI + Claude Code
 
@@ -153,4 +147,4 @@ Stress-tests an OpenSpec design's architecture, trade-offs, and implementation r
 
 - **Prerequisites**: `openspec` CLI.
 - **Example**: `grill this design` or `review the architecture for add-rate-limiter`
-- **Source**: [`skills/grill-design/SKILL.md`](skills/grill-design/SKILL.md)
+- **Source**: [`skills/_common/grill-design/SKILL.md`](skills/_common/grill-design/SKILL.md)
