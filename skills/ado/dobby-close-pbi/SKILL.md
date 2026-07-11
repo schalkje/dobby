@@ -322,6 +322,8 @@ If an OpenSpec change was found in step 4a, offer to archive it:
 openspec archive "<change-name>"
 ```
 
+<!-- dobby:include:verification-gate -->
+
 ### 9. Display Result
 
 ```
@@ -371,9 +373,3 @@ This skill handles evidence upload, acceptance criteria, state transitions, and 
 
 **With summary:**
 > Close PBI 1021108 — implemented language toggle tooltip and hid code fields from all views
-
-**From OpenSpec context:**
-> Close the PBI for change pbi-1021108-clarify-language-toggle-hide-code-field
-
-**With test evidence:**
-> Close PBI 1021108, all tests pass, run `npm test` for evidence

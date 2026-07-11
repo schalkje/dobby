@@ -47,6 +47,15 @@ git rev-parse --show-toplevel
 
 **Input**: A work item identifier (number, `AB#12345`, URL, or title) and the work item type (PBI, Bug, Feature, User Story).
 
+### Step 0 — detect context
+
+Run these checks before creating anything:
+
+1. `git rev-parse --git-dir --git-common-dir` — if the two paths differ, you are **already inside a worktree**. Never nest worktrees; instruct the user to `cd` to the main worktree first and stop.
+2. `git rev-parse --show-superproject-working-tree` — non-empty output means this repo is a **submodule**. Stop and ask the user how to proceed.
+3. If the host harness provides a **native worktree tool**, prefer it — and never mix it with manual `git worktree add` in the same session.
+4. If the configured worktree root resolves **inside** the repo (project-local, e.g. `.worktrees/`), run `git check-ignore <root>` first; if the root is not ignored, add a `.gitignore` entry for it and commit that before creating the worktree.
+
 ### Steps
 
 1. **Determine branch name** from work item type and title:
@@ -86,6 +95,8 @@ git rev-parse --show-toplevel
    To work in this worktree, change to the directory:
      cd <worktree-path>
    ```
+
+7. **Baseline check**: in the new worktree, run the project's dependency install (e.g. `npm install`) and its baseline build/test commands. Report a dirty baseline (pre-existing failures) immediately — before implementation starts — rather than letting it surface mid-implementation.
 
 ### Guards
 - Worktree creation does NOT require a clean working tree in the main worktree — it operates independently.

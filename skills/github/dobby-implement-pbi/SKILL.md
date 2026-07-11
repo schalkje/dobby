@@ -42,9 +42,12 @@ Before starting, check what already exists to support resume:
 - Uncommitted changes: `git status --short`
 - Existing PR: `gh pr list --head <branch> --json number,url,body`
 - Issue state: `gh issue view <N> --json state` — already Closed?
+- Ledger: does `.dobby/evidence/<N>/ledger.md` exist? If so, read it before anything else
 ```
 
 If a matching worktree exists, report its path and suggest changing to that directory before proceeding. Report findings and propose which phases to skip.
+
+<!-- dobby:include:progress-ledger -->
 
 ## Phase 1: Create Branch
 
@@ -104,6 +107,8 @@ For small/obvious fixes, implement directly without OpenSpec task tracking.
 ## Phase 6: Verify
 
 Run the project's verification suite (e.g., `npm run typecheck`, `npm run lint`, `npm run test`). Report results. If failures occur, determine whether they are pre-existing or caused by the change.
+
+<!-- dobby:include:verification-gate -->
 
 ## Phase 7: Capture After Evidence (UI changes)
 

@@ -134,6 +134,8 @@ If a workflow rule requires an intermediate state, transition through it first.
 
 **8d. Archive the OpenSpec change** (optional) if one was found: `openspec archive "<change-name>"`.
 
+<!-- dobby:include:verification-gate -->
+
 ### 9. Display Result
 
 ```
