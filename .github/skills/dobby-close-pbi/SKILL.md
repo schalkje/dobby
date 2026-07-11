@@ -1,6 +1,6 @@
 ---
 name: dobby-close-pbi
-description: Closes a GitHub Issue via its Pull Request, committing visual evidence to the PR branch and relying on Closes-on-merge for closure.
+description: Closes a GitHub Issue via its Pull Request — commits visual evidence to the PR branch, embeds it in the PR description, and relies on Closes-on-merge for closure. Use for "close issue", "close pbi", "close this", "wrap up", "wrap up this ticket", "finish this issue", or "mark issue done".
 compatibility: GitHub CLI (gh), authenticated; OpenSpec CLI
 metadata:
   author: dobby
@@ -28,26 +28,42 @@ If no PR references the target issue, the skill stops and asks the user to creat
 
 ## Defaults
 
-Read the `github` block from `.dobby/config.json` for `owner` and `repo`. If missing, prompt and persist as in `dobby-create-pbi`.
+Read the `github` block from `.dobby/config.json` in the repository root. Example shape:
+
+```json
+{
+  "backend": "github",
+  "github": {
+    "owner": "myorg",
+    "repo": "myrepo",
+    "defaultLabels": ["needs-triage"],
+    "projectNumber": 7
+  }
+}
+```
+
+`owner` and `repo` are required. `defaultLabels` are applied automatically when the user does not specify labels. `projectNumber` is optional and used only if the user asks to add the issue to a Projects v2 board. If `owner` or `repo` is missing, collect it during the first run and offer to persist it back to `.dobby/config.json` at the end (preserve `backend` and any other top-level keys).
 
 ## Steps
 
 ### 1. Validate Prerequisites
 
-**1a. Check gh CLI**
+Run these checks in parallel where possible.
+
+**Check gh CLI**
 ```bash
 gh --version
 ```
-- If `gh` is not found → stop: "GitHub CLI is not installed."
+- If `gh` is not found → stop: "GitHub CLI is not installed. Install from https://cli.github.com/"
 
-**1b. Check authentication**
+**Check authentication and show identity**
 ```bash
 gh auth status
 ```
-- If not authenticated → stop: "Run: `gh auth login`"
-- Display the active GitHub user.
+- If this reports "not logged in" → stop: "Run: `gh auth login`"
+- Display the active GitHub user so the user can confirm it's the right account.
 
-**1c. Check git working tree**
+**Check git working tree**
 ```bash
 git status --porcelain
 ```
@@ -165,7 +181,7 @@ git push origin <headRefName>
 
 **Guardrails:**
 - Stage only `docs/evidence/issue-<N>/` — never `git add .` or `git add -A`.
-- If the working tree has unrelated uncommitted changes, the warning in step 1c already gave the user a chance to abort.
+- If the working tree has unrelated uncommitted changes, the working-tree warning in step 1 already gave the user a chance to abort.
 - If the user is not currently on the PR branch, switch to it (this is why the PR branch was recorded in step 4).
 - Push **before** updating the PR description, so the embedded image URLs resolve immediately for reviewers.
 

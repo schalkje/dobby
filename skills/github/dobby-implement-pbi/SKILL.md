@@ -1,6 +1,6 @@
 ---
 name: dobby-implement-pbi
-description: End-to-end lifecycle orchestrator for implementing a GitHub Issue — from branch creation through spec, implementation, evidence, PR, and closure. Adaptive checklist with resume/skip support.
+description: "End-to-end lifecycle orchestrator for implementing a GitHub Issue — branch, spec, implementation, evidence, PR, and closure, with resume/skip support. Use for 'implement issue', 'implement pbi', 'pick up issue', 'work on #N', 'start on this issue', or 'take this issue end to end'."
 metadata:
   author: dobby
   version: "1.0"

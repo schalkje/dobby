@@ -1,6 +1,6 @@
 ---
 name: dobby-implement-pbi
-description: End-to-end lifecycle orchestrator for implementing a PBI or Bug — from branch creation through spec, implementation, evidence, PR, and closure. Adaptive checklist with resume/skip support.
+description: "End-to-end lifecycle orchestrator for implementing an Azure DevOps PBI or Bug — branch, spec, implementation, evidence, PR, and closure, with resume/skip support. Use for 'implement pbi', 'implement bug', 'pick up pbi', 'work on #N', 'start on this pbi', or 'take this work item end to end'."
 metadata:
   author: dobby
   version: "1.0"

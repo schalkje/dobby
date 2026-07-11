@@ -34,22 +34,11 @@ If the intent is ambiguous, ask the user: "Do you want to update specific fields
 
 ### 1. Validate Prerequisites
 
-**1a. Check gh CLI**
-```bash
-gh --version
-```
-- If `gh` is not found → stop: "GitHub CLI is not installed."
-
-**1b. Check authentication**
-```bash
-gh auth status
-```
-- If not authenticated → stop: "Run: `gh auth login`"
-- Display the active GitHub user so the user can catch a wrong-account issue early.
+<!-- dobby:include:github-prereqs -->
 
 ### 2. Resolve Owner and Repo
 
-Read the `github` block from `.dobby/config.json` for `owner` and `repo`. If missing, prompt and persist (same pattern as `dobby-create-pbi`).
+<!-- dobby:include:github-config-example -->
 
 ### 3. Fetch the Current Issue
 

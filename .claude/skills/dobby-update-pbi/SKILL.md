@@ -39,22 +39,38 @@ If the intent is ambiguous, ask the user: "Do you want to update specific fields
 
 ### 1. Validate Prerequisites
 
-**1a. Check gh CLI**
+Run these checks in parallel where possible.
+
+**Check gh CLI**
 ```bash
 gh --version
 ```
-- If `gh` is not found → stop: "GitHub CLI is not installed."
+- If `gh` is not found → stop: "GitHub CLI is not installed. Install from https://cli.github.com/"
 
-**1b. Check authentication**
+**Check authentication and show identity**
 ```bash
 gh auth status
 ```
-- If not authenticated → stop: "Run: `gh auth login`"
-- Display the active GitHub user so the user can catch a wrong-account issue early.
+- If this reports "not logged in" → stop: "Run: `gh auth login`"
+- Display the active GitHub user so the user can confirm it's the right account.
 
 ### 2. Resolve Owner and Repo
 
-Read the `github` block from `.dobby/config.json` for `owner` and `repo`. If missing, prompt and persist (same pattern as `dobby-create-pbi`).
+Read the `github` block from `.dobby/config.json` in the repository root. Example shape:
+
+```json
+{
+  "backend": "github",
+  "github": {
+    "owner": "myorg",
+    "repo": "myrepo",
+    "defaultLabels": ["needs-triage"],
+    "projectNumber": 7
+  }
+}
+```
+
+`owner` and `repo` are required. `defaultLabels` are applied automatically when the user does not specify labels. `projectNumber` is optional and used only if the user asks to add the issue to a Projects v2 board. If `owner` or `repo` is missing, collect it during the first run and offer to persist it back to `.dobby/config.json` at the end (preserve `backend` and any other top-level keys).
 
 ### 3. Fetch the Current Issue
 

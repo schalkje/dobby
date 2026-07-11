@@ -1,6 +1,6 @@
 ---
 name: dobby-propose-from-pbi
-description: Creates an OpenSpec proposal from an Azure DevOps PBI. Fetches work item details and generates proposal, design, and task artifacts ready for implementation.
+description: "Creates an OpenSpec proposal from an Azure DevOps PBI — fetches and refines the work item, then generates proposal, design, and task artifacts ready for implementation. Use for 'propose from pbi', 'create proposal from PBI #N', 'spec this pbi', 'create a spec for PBI', or 'generate an openspec change from this work item'."
 metadata:
   author: dobby
   version: "2.0"
@@ -13,51 +13,21 @@ Create an OpenSpec change proposal from an existing Azure DevOps Product Backlog
 
 ## Defaults
 
-Read the `ado` block from `.dobby/config.json` in the repository root. Example shape:
-
-```json
-{
-  "backend": "ado",
-  "ado": {
-    "organization": "https://dev.azure.com/myorg/",
-    "project": "MyProject",
-    "team": "MyTeam"
-  }
-}
-```
-
-The values under `ado` eliminate repeated prompts for org and project. If the `ado` block is missing or incomplete, collect the missing fields interactively (same pattern as `dobby-create-pbi`).
+<!-- dobby:include:ado-config-example -->
 
 ## Steps
 
-### ⛔ Command Execution Rules
-
-- **No piping.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output — no `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
-- **Resolve bundled scripts relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder — e.g., `python skills/_lib/azdo-update-fields.py`. Never reach back into dobby's source repository for them.
+<!-- dobby:include:ado-command-rules -->
 
 ### 1. Validate Prerequisites
 
-Run these checks in parallel where possible.
+<!-- dobby:include:ado-prereqs -->
 
-**1a. Check Azure CLI and DevOps extension**
-```bash
-az version --output json
-```
-- If `az` is not found → stop: "Azure CLI is not installed. Install from https://learn.microsoft.com/cli/azure/install-azure-cli"
-- If `azure-devops` extension is not in the output → stop: "Run: `az extension add --name azure-devops`"
-
-**1b. Check OpenSpec CLI**
+**Check OpenSpec CLI**
 ```bash
 openspec --version
 ```
 - If `openspec` is not found → stop: "OpenSpec CLI is required. Install it first."
-
-**1c. Check authentication**
-```bash
-az account show --query "{user:user.name, tenant:tenantId}" --output json
-```
-- If this fails → stop: "Run: `az login`"
-- Display the logged-in user so they can confirm the right account.
 
 ### 2. Resolve Organization and Project
 

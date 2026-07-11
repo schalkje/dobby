@@ -1,6 +1,6 @@
 ---
 name: dobby-close-pbi
-description: Closes a PBI in Azure DevOps with evidence and a closing summary.
+description: Closes a PBI or Bug in Azure DevOps — gathers implementation evidence, uploads screenshots, checks acceptance criteria, posts a closing summary, and sets the state to Done. Use for "close pbi", "close this pbi", "close bug", "wrap up", "wrap up this ticket", "finish this pbi", or "mark as done".
 metadata:
   author: dobby
   version: "2.0"
@@ -13,57 +13,17 @@ Close a Product Backlog Item (PBI) in Azure DevOps with implementation evidence 
 
 ## Defaults
 
-Read the `ado` block from `.dobby/config.json` in the repository root. Example shape:
+<!-- dobby:include:ado-config-example -->
 
-```json
-{
-  "backend": "ado",
-  "ado": {
-    "organization": "https://dev.azure.com/myorg/",
-    "project": "MyProject",
-    "team": "MyTeam",
-    "devLinks": {
-      "repoReachableFromAdo": true,
-      "host": "github",
-      "githubConnectionId": "<guid-of-boards-github-connection>",
-      "adoProjectId": "<guid>",
-      "adoRepoId": "<guid>"
-    }
-  }
-}
-```
-
-**`ado.devLinks` (used by step 6c)** — declares whether the implementation repo is reachable from the org's ADO so the right link type is chosen automatically:
-
-- `repoReachableFromAdo` (bool, **required**): `true` for ADO Repos in this org or company-GitHub repos that have a Boards <-> GitHub connection set up; `false` for private personal/external repos that the org's ADO cannot reach.
-- `host` (`"github"` | `"ado"`): the implementation repo's host. Optional — usually inferred from the URL.
-- `githubConnectionId`: the GUID of the project's Boards <-> GitHub connection. Required when `repoReachableFromAdo: true` and `host: "github"`. Find via `GET <org>/<project>/_apis/githubconnections?api-version=7.2-preview.1`.
-- `adoProjectId` / `adoRepoId`: GUIDs for ADO Repos. Required when `host: "ado"`. Find via `az repos show --repository <name> --query "{p:project.id, r:id}"`.
+The optional `ado.devLinks` block controls how commit / branch / PR links attach to the work item — its fields and behavior are documented in step 6c.
 
 ## Steps
 
-### ⛔ Command Execution Rules
-
-- **No piping.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output — no `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
-- **Resolve bundled scripts relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder — e.g., `python skills/_lib/azdo-add-comment.py`. Never reach back into dobby's source repository for them.
+<!-- dobby:include:ado-command-rules -->
 
 ### 1. Validate Prerequisites
 
-Run these checks in parallel where possible.
-
-**1a. Check Azure CLI and DevOps extension**
-```bash
-az version --output json
-```
-- If `az` is not found → stop: "Azure CLI is not installed."
-- If `azure-devops` extension is not in the output → stop: "Run: `az extension add --name azure-devops`"
-
-**1b. Check authentication**
-```bash
-az account show --query "{user:user.name, tenant:tenantId}" --output json
-```
-- If this fails → stop: "Run: `az login`"
-- Display the logged-in user.
+<!-- dobby:include:ado-prereqs -->
 
 ### 2. Resolve Organization and Project
 
@@ -146,66 +106,16 @@ Use these signals:
 
 **4f. Screenshot evidence** (Playwright-first)
 
-**Always use Playwright when the project supports it** (Playwright config exists + E2E fixtures available). This is the default — do not ask the user to take manual screenshots when Playwright is available.
-
-**How to recognize the project supports Playwright evidence:**
-- `playwright.config.ts` exists at the repo root
-- `tests/e2e/` contains specs that use `_electron.launch(...)` or a similar app launcher
-- A reference spec produces PNGs (e.g., `help-screenshots.spec.ts` in `cdmedit`)
-- A demo / fixture model exists under `tests/e2e/fixtures/` so the spec can run deterministically
-
-**Evidence file naming — each screenshot MUST have a descriptive filename:**
-- Format: `<phase>-NN-<description>.png`
-  - `before-01-entity-editor-current-state.png`
-  - `after-01-entity-editor-with-highlight.png`
-  - `after-02-relation-browser-dialog-open.png`
-- The description becomes the header/caption in the ADO evidence comment
-- For bug fixes, `before-NN` and `after-NN` should use matching numbers and similar descriptions so the improvement is directly comparable
-
-**Evidence spec pattern:**
-
-1. Create `tests/e2e/pbi-<id>-evidence.spec.ts` (or `bug-<id>-evidence.spec.ts`) modeled on the project's screenshot spec.
-2. Output screenshots to `tests/e2e/evidence/<prefix>-<id>/*.png` (one folder per PBI). **Add `tests/e2e/evidence/` to `.gitignore`** — once uploaded to ADO the images live as work-item attachments, so keeping them in git is duplication.
-3. Set `viewport: { width: 1400, height: 900 }` (or the project default).
-
-**Build & run (do this every time before running the spec):**
-```bash
-npm run build
-npx playwright test tests/e2e/<prefix>-<id>-evidence.spec.ts --reporter=list
-```
+**Always use Playwright when the project supports it** (Playwright config exists + E2E fixtures available). This is the default — do not ask the user to take manual screenshots when Playwright is available. Read `references/evidence-gathering.md` for the full detail: how to recognize Playwright support, the descriptive-filename rules (`<phase>-NN-<description>.png`), the evidence spec pattern (output to `tests/e2e/evidence/<prefix>-<id>/`, gitignored), the build-and-run commands, and the after-evidence comment format.
 
 **When the `dobby-implement-pbi` orchestrator invoked this skill**, before evidence should already be uploaded (Phase 4c). Check the work item discussion for an existing "Before Evidence" comment. If present, only after evidence needs to be gathered here.
 
 **When this skill is invoked standalone** (not from the orchestrator), gather all evidence now:
 - Check for existing before/after screenshots in `tests/e2e/evidence/<prefix>-<id>/`
-- If none exist and this is a UI change, generate them via Playwright
+- If none exist and this is a UI change, generate them via Playwright following `references/evidence-gathering.md`
 - If Playwright is not available, ask the user to provide file paths
 
-**After evidence comment format** — each image gets its own heading:
-```markdown
-## 📸 After Evidence
-
-State after implementation.
-
-### <Description from filename>
-![After — <description>](<attachment-url>)
-
-### <Description from filename>
-![After — <description>](<attachment-url>)
-```
-
-Derive the heading from the filename: strip `after-NN-`, replace hyphens with spaces, title-case.
-
 **If the user declines screenshots**, continue without them. Do not block closing.
-
-**Common pitfalls** (learned from PBI 1021103 and 1013608):
-- **Stale `dist-electron/`** causes cryptic timeouts — always rebuild first.
-- **Tree-label substring matching** picks up unintended items: use `:text-is("Client")` for exact match (avoids matching "Client Relations").
-- **View/Edit mode**: in `cdmedit`, the "Edit" tab on entity pages only appears when the global view/edit toggle (top toolbar `button[title*="Edit mode"]`) is in **Edit** mode. Click it before clicking the Edit tab.
-- **React Flow node selector specificity**: Use `.react-flow__node-entity` (not `.react-flow__node`) to target entity nodes and avoid matching domain containers. Use `page.mouse.dblclick(x, y)` for native events that bubble through React Flow, not `locator.dblclick({ force: true })`.
-- **Edge interaction paths** intercept pointer events on handles — use `{ force: true }` for hover/click, or use `page.mouse.click(x, y)` with computed coordinates.
-- **Avoid broken setup helpers**: if `setupWithDemiModel` (or equivalent) is failing, copy the launch+open pattern from `help-screenshots.spec.ts` directly.
-- **Permission-denied on `npx`/`npm`** in some shells: fall back to `node node_modules/playwright/cli.js test ...` and `node node_modules/electron-vite/bin/electron-vite.js build`.
 
 After the spec passes, hand the resulting PNGs to step 6a (upload) — no need to ask the user for files.
 
@@ -325,7 +235,7 @@ After the user confirms the closing comment:
        <file1> <file2> ...
    ```
 4. Parse the returned JSON to get attachment URLs.
-5. Replace local file path placeholders in the comment with the actual Azure DevOps attachment URLs.
+5. Replace local file path placeholders in the comment with the actual Azure DevOps attachment URLs (you need the attachment URLs before the final comment can be posted).
 6. If any upload fails, warn the user and continue with remaining images.
 
 ### 6b. Post Closing Comment
@@ -342,7 +252,7 @@ python skills/_lib/azdo-add-comment.py \
 
 This avoids shell quoting issues with large markdown content containing image URLs.
 
-**The script PATCHes `System.History` with the `multilineFieldsFormat: "Markdown"` hint** (api-version 7.2-preview.3). The plain Comments REST API silently ignores `format` and stores everything as HTML — the patch-via-history approach is the only way to get markdown rendering. **Never use `PATCH /workItems/{id}/comments/{commentId}` to edit an existing comment** either — it has the same bug and will silently downgrade the format from `markdown` back to `html`. To "edit", always **delete + re-post** via the patched script:
+**Never use `az boards work-item update --discussion`** for comments that contain markdown — it produces HTML-only output that strips markdown formatting. The script instead PATCHes `System.History` with the `multilineFieldsFormat: "Markdown"` hint (api-version 7.2-preview.3); the plain Comments REST API silently ignores `format` and stores everything as HTML — the patch-via-history approach is the only way to get markdown rendering. **Never use `PATCH /workItems/{id}/comments/{commentId}` to edit an existing comment** either — it has the same bug and will silently downgrade the format from `markdown` back to `html`. To "edit", always **delete + re-post** via the patched script:
 
 ```bash
 python skills/_lib/azdo-delete-comment.py \
@@ -352,55 +262,7 @@ python skills/_lib/azdo-delete-comment.py \
 
 ### 6c. Add Development Links (commit / branch / PR)
 
-Link the implementation commit and branch from the work item. The right link type depends on **whether the org's ADO can reach the repo** — read this from `.dobby/config.json` -> `ado.devLinks.repoReachableFromAdo`.
-
-| Repo location | `repoReachableFromAdo` | Link type | Where it shows |
-|---|---|---|---|
-| ADO Repos in same org | `true` | ArtifactLink | Development section |
-| Company GitHub with Boards <-> GitHub connection | `true` | ArtifactLink | Development section |
-| Private personal GitHub, external repo, anything ADO can't reach | `false` | Hyperlink | Links panel |
-
-**Why this matters**: the API will *accept* a `vstfs:///GitHub/Commit/...` ArtifactLink even when no connection exists, but the work item form will then display "GitHub Commit link could not be read" because ADO has no way to fetch the commit metadata. **Posting an unresolvable ArtifactLink is worse than posting a Hyperlink** — don't do it. If `repoReachableFromAdo` is missing or unsure, default to Hyperlink.
-
-If `devLinks` is missing entirely, ask the user once and write it back into the `ado` block of `.dobby/config.json` so future PBIs use the right type without prompting.
-
-**Discovery (when `repoReachableFromAdo: true`):**
-
-- GitHub: `GET <org>/<project>/_apis/githubconnections?api-version=7.2-preview.1` — copy the `id` GUID into `devLinks.githubConnectionId`. Also check `GET <org>/_apis/serviceendpoint/endpoints?type=github` for an org-level connection.
-- ADO Repos: `az repos show --repository <name> --org "<org-url>" --project "<project>" --query "{p:project.id, r:id}" -o json` — store both GUIDs in `devLinks`.
-
-Run `azdo-add-dev-links.py` — it picks the right relation type based on the flags it receives:
-
-```bash
-python skills/_lib/azdo-add-dev-links.py \
-    --work-item-id <pbi-id> \
-    --org "<org-url>" \
-    --project "<project-name>" \
-    --commit-url "<commit-url>" --commit-comment "<subject> (<short-sha>)" \
-    --branch-url "<branch-url>" --branch-comment "Implementation branch" \
-    [--pr-url "<pr-url>" --pr-comment "PR #<num>"] \
-    [--gh-connection-id <guid>] \
-    [--ado-project-id <guid> --ado-repo-id <guid>]
-```
-
-Behaviour:
-- **GitHub URLs**: ArtifactLink iff `--gh-connection-id` (or `GH_BOARDS_CONNECTION_ID` env var) is supplied; otherwise Hyperlink. (GitHub branches always use Hyperlink — there's no GitHub Branch artifact-link type.)
-- **ADO Repos URLs**: ArtifactLink iff both `--ado-project-id` and `--ado-repo-id` (or `ADO_PROJECT_ID` / `ADO_REPO_ID`) are supplied; otherwise Hyperlink.
-- **Anything else**: Hyperlink.
-
-Artifact-link URI formats (the script encodes these for you):
-- `vstfs:///GitHub/Commit/<connection-id>%2F<sha>` — name `"GitHub Commit"`
-- `vstfs:///GitHub/PullRequest/<connection-id>%2F<num>` — name `"GitHub Pull Request"`
-- `vstfs:///Git/Commit/<projectId>%2f<repoId>%2f<sha>` — name `"Fixed in Commit"`
-- `vstfs:///Git/Ref/<projectId>%2f<repoId>%2fGBrefs%2fheads%2f<branch>` — name `"Branch"`
-- `vstfs:///Git/PullRequestId/<projectId>%2f<repoId>%2f<num>` — name `"Pull Request"`
-
-**Always**:
-1. Push the branch to origin first (otherwise the URLs 404 in browsers).
-2. Use the **full 40-char SHA** in the URL — short SHAs aren't universally resolvable.
-3. Run this **before** posting the closing comment so users see the links right away.
-
-The same URLs should also appear in the `### Source` section of the closing comment for inline visibility.
+<!-- dobby:include:ado-dev-links -->
 
 ### 7. Check Off Acceptance Criteria
 
@@ -497,25 +359,6 @@ openspec archive "<change-name>"
 - **Use clean markdown in closing comments** — no HTML comments (`<!-- -->`), no inline HTML. Omit empty sections rather than including placeholder text.
 - **Verify acceptance criteria against evidence** — do not blindly check all boxes. Cross-reference each criterion with implementation evidence.
 - **Multiple screenshots are welcome** — encourage capturing different states/views, not just a single screenshot.
-
-### Critical: Markdown Comment Format
-
-**Never use `az boards work-item update --discussion`** for comments that contain markdown. It produces HTML-only output that strips markdown formatting.
-
-Always use the `azdo-add-comment.py` script, which patches `System.History` with `multilineFieldsFormat: "Markdown"` (API version 7.2-preview.3). This is the ONLY way to get markdown rendered properly in ADO comments.
-
-### Evidence Upload Order
-
-When uploading screenshots as evidence:
-1. Upload images FIRST via `azdo-upload-attachment.py` to get attachment URLs
-2. Compose the markdown comment body using those attachment URLs
-3. Post the comment via `azdo-add-comment.py`
-
-Order matters — you need the attachment URLs before you can compose the comment.
-
-### Editing Comments
-
-Never use `PATCH /workItems/{id}/comments/{commentId}` to edit a comment — it silently downgrades markdown to HTML. Instead: delete the old comment with `azdo-delete-comment.py`, then re-post with `azdo-add-comment.py`.
 
 ### Scope
 

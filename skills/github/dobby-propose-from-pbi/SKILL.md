@@ -1,6 +1,6 @@
 ---
 name: dobby-propose-from-pbi
-description: Creates an OpenSpec proposal from a GitHub Issue. Fetches issue details and generates proposal, design, and task artifacts ready for implementation.
+description: "Creates an OpenSpec proposal from a GitHub Issue — fetches and refines the issue, then generates proposal, design, and task artifacts ready for implementation. Use for 'propose from issue', 'create proposal from #N', 'spec this issue', 'create a spec for issue', or 'generate an openspec change from this issue'."
 metadata:
   author: dobby
   version: "1.0"
@@ -13,30 +13,19 @@ Create an OpenSpec change proposal from an existing GitHub Issue.
 
 ## Defaults
 
-Read the `github` block from `.dobby/config.json` for `owner` and `repo`. If missing, prompt and persist as in `dobby-create-pbi`.
+<!-- dobby:include:github-config-example -->
 
 ## Steps
 
 ### 1. Validate Prerequisites
 
-**1a. Check gh CLI**
-```bash
-gh --version
-```
-- If `gh` is not found → stop: "GitHub CLI is not installed."
+<!-- dobby:include:github-prereqs -->
 
-**1b. Check OpenSpec CLI**
+**Check OpenSpec CLI**
 ```bash
 openspec --version
 ```
 - If `openspec` is not found → stop: "OpenSpec CLI is required. Install it first."
-
-**1c. Check authentication**
-```bash
-gh auth status
-```
-- If not authenticated → stop: "Run: `gh auth login`"
-- Display the active GitHub user.
 
 ### 2. Resolve Owner and Repo
 
