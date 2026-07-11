@@ -54,7 +54,7 @@ Report findings and propose which phases to skip.
 
 ### Worktree mode (when `worktree.enabled` is `true` in `.dobby/config.json`)
 
-Read and follow `skills/dobby-worktree/SKILL.md`, using the `create` sub-command with the work item ID and title as input.
+Read and follow the `dobby-worktree` skill's SKILL.md, using the `create` sub-command with the work item ID and title as input.
 
 After the worktree is created, instruct the user to change to the worktree directory:
 ```
@@ -84,7 +84,7 @@ Slug: kebab-case, max 40 chars, from the work item title.
 
 Use the `dobby-propose-from-pbi` skill to fetch the work item and create an OpenSpec change:
 
-> Read and follow `.github/skills/dobby-propose-from-pbi/SKILL.md`, treating the PBI identifier as input.
+> Read and follow the `dobby-propose-from-pbi` skill's SKILL.md, treating the PBI identifier as input.
 
 This produces `proposal.md`, `design.md`, `specs/`, and `tasks.md`.
 
@@ -94,7 +94,7 @@ This produces `proposal.md`, `design.md`, `specs/`, and `tasks.md`.
 
 Use the `grill-me` skill to stress-test the plan:
 
-> Read and follow `.github/skills/grill-me/SKILL.md`, using the generated proposal and design as context.
+> Read and follow the `grill-me` skill's SKILL.md, using the generated proposal and design as context.
 
 Incorporate findings back into the design/tasks if needed.
 
@@ -160,7 +160,7 @@ Each image gets its own `### Header` with a human-readable description derived f
 
 Use the `openspec-apply-change` skill if an OpenSpec change exists:
 
-> Read and follow `.github/skills/openspec-apply-change/SKILL.md`.
+> Read and follow the `openspec-apply-change` skill's SKILL.md.
 
 For small/obvious fixes, implement directly without OpenSpec task tracking.
 
@@ -268,7 +268,7 @@ python skills/_lib/azdo-add-dev-links.py \
 
 Use the `dobby-close-pbi` skill:
 
-> Read and follow `.github/skills/dobby-close-pbi/SKILL.md`.
+> Read and follow the `dobby-close-pbi` skill's SKILL.md.
 
 The closing comment should already be posted (Phase 9a). The close skill will:
 - Check acceptance criteria

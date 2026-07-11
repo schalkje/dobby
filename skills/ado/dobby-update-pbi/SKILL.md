@@ -26,10 +26,10 @@ If the intent is ambiguous, ask the user: "Do you want to update specific fields
 
 1. **NEVER use `--description` on `az boards work-item update`.** It truncates at the first newline. Always use the helper script (`azdo-update-fields.py`) for multiline fields.
 2. **NEVER write HTML in description, acceptance criteria, or repro steps fields.** Content must be **Markdown** — not HTML. No `<b>`, `<br>`, `<ul>`, `<li>` tags. Use markdown syntax: `**bold**`, line breaks, `- list items`. The helper script sets the field format to Markdown; HTML content in a Markdown-formatted field renders as raw escaped tags.
-3. **Follow the template** when generating content. PBIs use `skills/ado/dobby-create-pbi/templates/pbi-template.md`; Bugs use `skills/ado/dobby-create-pbi/templates/bug-template.md`. When updating a single section, preserve existing content in other sections unless the user explicitly asks to replace everything.
+3. **Follow the template** when generating content. PBIs use `dobby-create-pbi/templates/pbi-template.md`; Bugs use `dobby-create-pbi/templates/bug-template.md` (the templates ship with the `dobby-create-pbi` skill). When updating a single section, preserve existing content in other sections unless the user explicitly asks to replace everything.
 4. **Always use the helper script for multiline fields** — `az boards` cannot set markdown format.
 5. **Run commands exactly as shown — no piping, no post-processing.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output. This includes `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
-6. **Use canonical `skills/` paths for all file reads and script invocations.** This SKILL.md lives at `skills/dobby-update-pbi/`. Reference scripts and templates from this canonical path — e.g., `python skills/_lib/azdo-get-comments.py`, not from `.github/skills/` or `.claude/skills/` host copies. The host copies are auto-generated mirrors and must not be referenced directly.
+6. **Resolve bundled files relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder and templates under the `dobby-create-pbi` skill's `templates/` folder — e.g., `python skills/_lib/azdo-get-comments.py`. Never reach back into dobby's source repository for them.
 
 ## Field Mapping by Work Item Type
 
@@ -233,9 +233,9 @@ Search the repository for context relevant to the PBI. Use the title, descriptio
 
 Read the appropriate template to guide the output structure:
 
-- PBIs: `skills/ado/dobby-create-pbi/templates/pbi-template.md`
-- Bugs: `skills/ado/dobby-create-pbi/templates/bug-template.md`
-- Features: `skills/ado/dobby-create-pbi/templates/feature-template.md`
+- PBIs: `dobby-create-pbi/templates/pbi-template.md`
+- Bugs: `dobby-create-pbi/templates/bug-template.md`
+- Features: `dobby-create-pbi/templates/feature-template.md`
 
 The template defines the expected sections and structure. The refined PBI must follow this structure.
 
@@ -323,7 +323,7 @@ After successful update, verify (same as step 7) and report the work item URL.
 ## Content Guidelines
 
 - **All content must be Markdown — never HTML.** No exceptions.
-- Use the template from `skills/ado/dobby-create-pbi/templates/` as the structural guide.
+- Use the template from `dobby-create-pbi/templates/` as the structural guide.
 - When partially updating (e.g., only acceptance criteria), don't touch other fields.
 - When replacing a field entirely, follow the template structure for that field.
 - When the existing content is in HTML format (legacy), convert it to Markdown during the update — this fixes the format going forward.

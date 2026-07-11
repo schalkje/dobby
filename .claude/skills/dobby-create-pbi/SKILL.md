@@ -77,7 +77,7 @@ gh repo view <owner>/<repo> --json name,owner,visibility --output json
 
 **3b. Description and Acceptance Criteria** (optional but recommended)
 
-Generate content following the template in `skills/github/dobby-create-pbi/templates/issue-template.md`. The template defines a single markdown body with two sections:
+Generate content following the template in `templates/issue-template.md` (bundled with this skill). The template defines a single markdown body with two sections:
 
 - **`## Description`** — user-story line, overview table, goal, scope, solution approach, references.
 - **`## Acceptance Criteria`** — Given/When/Then checkbox items.
