@@ -62,7 +62,9 @@ openspec init --tools "claude,github-copilot"   # run in the target project; quo
 
 `init` also offers to (a) drop a `.dobby/config.json` skeleton for the chosen scenario and (b) run `openspec init` in the target to install the OpenSpec workflow skills. Drive both without prompts for scripting: `-Config` / `-NoConfig` (and `-Force` to overwrite an existing config), `-OpenSpec` / `-NoOpenSpec`. Example: `.\dobby.ps1 init ..\my-app github -Config -OpenSpec`.
 
-After assembling each `SKILL.md`, the generator runs a **forbidden-pattern lint** (template/macro syntax, leftover seam anchors, references to retired `dobby-ado-*`/`dobby-gh-*` skills, dispatcher/backend-routing prose) and **fails the build** if any appear — so the "flat, no-template" guarantees are self-enforcing.
+After assembling each `SKILL.md`, the generator runs a **forbidden-pattern lint** (template/macro syntax, leftover seam anchors, references to retired `dobby-ado-*`/`dobby-gh-*` skills, dispatcher/backend-routing prose, host-specific `.github/skills//.claude/skills/` paths, source-tier `skills/<tier>/` paths, backslash paths) and a **spec-conformance check** on the frontmatter (only portable [Agent Skills spec](https://agentskills.io/specification) keys; name/description/compatibility constraints; name must match the directory), and **fails the build** if any appear — so the "flat, no-template, portable" guarantees are self-enforcing.
+
+The generator also **injects spec fields** into every generated skill: a `compatibility:` line computed from what the prose actually invokes (az/gh/python/openspec/git-worktree), and `scenario` + `generator` provenance merged into the source's `metadata:` block (source-authored keys win). `GENERATOR_VERSION` in `build-skills.py` is deliberately a manually bumped constant, not a git SHA — `check-skill-sync.py` regenerates and diffs, so the stamp must be stable across commits.
 
 Dobby develops against the **github** flow (issues + PRs): its committed `.claude/skills/` and `.github/skills/` are the `dev` output. Run `dev` and commit the result after editing any github-scenario or `_common` source.
 

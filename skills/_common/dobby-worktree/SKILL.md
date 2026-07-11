@@ -115,9 +115,9 @@ git rev-parse --show-toplevel
 
    | Path | Branch | PBI | Last Commit | Status |
    |------|--------|-----|-------------|--------|
-   | C:\repo\project\ | main | — | 2025-05-20 | main |
-   | C:\repo\project-worktrees\feat-123-auth\ | feat/123-auth | #123 | 2025-05-19 | active |
-   | C:\repo\project-worktrees\fix-456-bug\ | fix/456-bug | #456 | 2025-05-10 | ⚠️ stale |
+   | /repo/project/ | main | — | 2025-05-20 | main |
+   | /repo/project-worktrees/feat-123-auth/ | feat/123-auth | #123 | 2025-05-19 | active |
+   | /repo/project-worktrees/fix-456-bug/ | fix/456-bug | #456 | 2025-05-10 | ⚠️ stale |
    ```
 
 ## Sub-command: remove

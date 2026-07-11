@@ -1,0 +1,34 @@
+name: Validate skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Assembles all three scenarios. Fails on any forbidden-pattern lint hit
+      # (host paths, tier paths, backslash paths, seam anchors, template syntax)
+      # or Agent Skills spec violation (non-portable frontmatter keys, name/
+      # description constraints) — see scripts/build-skills.py.
+      - name: Build all scenarios (lint + spec validation)
+        run: python scripts/build-skills.py build
+
+      # The committed .claude/skills/ + .github/skills/ must match what the
+      # generator produces for the github scenario.
+      - name: Check committed host copies for drift
+        run: python scripts/check-skill-sync.py
+
+      # Optional deeper conformance pass with the official spec validator
+      # (https://github.com/agentskills/agentskills — `skills-ref`). Not yet
+      # enabled: pin a released version before adding, per supply-chain policy.
+      # - name: skills-ref validate
+      #   run: skills-ref validate .claude/skills/*
