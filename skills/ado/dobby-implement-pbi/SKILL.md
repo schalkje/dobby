@@ -256,6 +256,8 @@ gh pr create --base main --head <branch> \
 
 If `gh` is not authenticated, provide the manual URL and ask the user to create it.
 
+After the PR exists, suggest a review before merge via the host's native PR-review capability (e.g. a `/review` command or Copilot code review) — dobby deliberately ships no review skill of its own.
+
 **9c. Add dev links to ADO:**
 
 Link commit, branch, and PR to the work item:

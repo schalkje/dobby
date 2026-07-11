@@ -135,8 +135,7 @@ Generated skills read `.dobby/config.json` for the per-backend connection detail
   "github": {
     "owner": "myorg",
     "repo": "my-repo",
-    "defaultLabels": ["needs-triage"],
-    "projectNumber": 7
+    "defaultLabels": ["needs-triage"]
   },
 
   // Optional. Free-form reminders that `dobby-implement-pbi` reads at the

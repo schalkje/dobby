@@ -173,6 +173,8 @@ The PR body MUST contain `Closes #<N>` (or `Fixes #<N>` / `Resolves #<N>`) so th
 
 Record the PR number and URL.
 
+**9c. Suggest a review before merge**: point the user at the host's native PR-review capability (e.g. a `/review` command or Copilot code review) — dobby deliberately ships no review skill of its own.
+
 
 ## Phase 10: Close Work Item
 
