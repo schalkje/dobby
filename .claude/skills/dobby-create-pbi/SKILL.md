@@ -1,6 +1,6 @@
 ---
 name: dobby-create-pbi
-description: Creates an Issue in GitHub from a conversational request. Collects fields interactively, validates prerequisites, and creates the issue via the gh CLI.
+description: Creates a GitHub Issue from a conversational request — collects title, description, acceptance criteria, and labels interactively, then creates via the gh CLI. Use for "create issue", "new issue", "create pbi", "new pbi", "new work item", "file an issue", or "add a backlog item".
 compatibility: GitHub CLI (gh), authenticated
 metadata:
   author: dobby
@@ -32,9 +32,7 @@ Read the `github` block from `.dobby/config.json` in the repository root. Exampl
 }
 ```
 
-`owner` and `repo` are required. `defaultLabels` are applied automatically if the user does not specify labels. `projectNumber` is optional and used only if the user asks to add the issue to a Projects v2 board.
-
-If the `github` block is missing `owner` or `repo`, those are collected during the first run and persisted at the end (step 7).
+`owner` and `repo` are required. `defaultLabels` are applied automatically when the user does not specify labels. `projectNumber` is optional and used only if the user asks to add the issue to a Projects v2 board. If `owner` or `repo` is missing, collect it during the first run and offer to persist it back to `.dobby/config.json` at the end (preserve `backend` and any other top-level keys).
 
 ## Steps
 
@@ -42,13 +40,13 @@ If the `github` block is missing `owner` or `repo`, those are collected during t
 
 Run these checks in parallel where possible.
 
-**1a. Check gh CLI**
+**Check gh CLI**
 ```bash
 gh --version
 ```
 - If `gh` is not found → stop: "GitHub CLI is not installed. Install from https://cli.github.com/"
 
-**1b. Check authentication**
+**Check authentication and show identity**
 ```bash
 gh auth status
 ```

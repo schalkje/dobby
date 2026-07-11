@@ -1,6 +1,6 @@
 ---
 name: dobby-create-pbi
-description: Creates an Issue in GitHub from a conversational request. Collects fields interactively, validates prerequisites, and creates the issue via the gh CLI.
+description: Creates a GitHub Issue from a conversational request — collects title, description, acceptance criteria, and labels interactively, then creates via the gh CLI. Use for "create issue", "new issue", "create pbi", "new pbi", "new work item", "file an issue", or "add a backlog item".
 metadata:
   author: dobby
   version: "1.0"
@@ -13,42 +13,13 @@ Create a GitHub Issue from a conversational request.
 
 ## Defaults
 
-Read the `github` block from `.dobby/config.json` in the repository root. Example shape:
-
-```json
-{
-  "backend": "github",
-  "github": {
-    "owner": "myorg",
-    "repo": "myrepo",
-    "defaultLabels": ["needs-triage"],
-    "projectNumber": 7
-  }
-}
-```
-
-`owner` and `repo` are required. `defaultLabels` are applied automatically if the user does not specify labels. `projectNumber` is optional and used only if the user asks to add the issue to a Projects v2 board.
-
-If the `github` block is missing `owner` or `repo`, those are collected during the first run and persisted at the end (step 7).
+<!-- dobby:include:github-config-example -->
 
 ## Steps
 
 ### 1. Validate Prerequisites
 
-Run these checks in parallel where possible.
-
-**1a. Check gh CLI**
-```bash
-gh --version
-```
-- If `gh` is not found → stop: "GitHub CLI is not installed. Install from https://cli.github.com/"
-
-**1b. Check authentication**
-```bash
-gh auth status
-```
-- If this reports "not logged in" → stop: "Run: `gh auth login`"
-- Display the active GitHub user so the user can confirm it's the right account.
+<!-- dobby:include:github-prereqs -->
 
 ### 2. Resolve Owner and Repo
 

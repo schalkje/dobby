@@ -45,30 +45,11 @@ If the intent is ambiguous, ask the user: "Do you want to update specific fields
 
 ### 1. Validate Prerequisites
 
-Run these checks (same as create skill):
-
-**1a. Check Azure CLI and extension**
-```bash
-az version --output json
-```
-- If `az` is not found → stop: "Azure CLI is not installed."
-- If `azure-devops` is not listed under `extensions` → install it: `az extension add --name azure-devops`
-
-**1b. Check Python availability**
-```bash
-python --version
-```
-- If `python` is not found → stop: "Python 3 is required for the markdown field helper script."
-
-**1c. Check authentication**
-```bash
-az account show --query "{user:user.name, tenant:tenantId}" --output json
-```
-- If this fails → stop: "Run: `az login`"
+<!-- dobby:include:ado-prereqs -->
 
 ### 2. Load Configuration
 
-Read `.dobby/config.json` to get `organization` and `project`.
+<!-- dobby:include:ado-config-example -->
 
 ### 3. Fetch Current Work Item
 

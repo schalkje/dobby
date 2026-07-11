@@ -48,6 +48,7 @@ SPEC_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FORBIDDEN = [
     (re.compile(r"\{\{|\}\}|\{%|%\}"), "template/macro syntax"),
     (re.compile(r"dobby:combined-seam:"), "leftover combined-seam anchor"),
+    (re.compile(r"dobby:include:"), "leftover include anchor (missing fragment under skills/_fragments/?)"),
     (re.compile(r"dobby-(ado|gh)-[a-z-]+"), "reference to a retired backend skill (dobby-ado-* / dobby-gh-*)"),
     (re.compile(r"after backend resolution", re.I), "dispatcher 'backend resolution' prose"),
     (re.compile(r"resolves?\s+`?backend`?\b.*\bfrom\b.*config\.json", re.I), "runtime backend routing prose"),
@@ -163,6 +164,27 @@ def rewrite_script_paths(body, scripts, owner_of):
     return body
 
 
+INCLUDE_RE = re.compile(r"^[ \t]*<!--[ \t]*dobby:include:([\w-]+)[ \t]*-->[ \t]*\n?", re.M)
+
+
+def apply_includes(body):
+    """Replace every `<!-- dobby:include:<name> -->` anchor with the content of
+    `skills/_fragments/<name>.md`. Shared prose (prereq checks, config examples,
+    dev-links instructions) is authored once and woven into each skill here, so
+    the generated output stays flat while sources never duplicate it. Fragments
+    may themselves contain `_lib` script references (rewritten afterwards) but
+    not further includes (no nesting). Runs after seam substitution so the
+    combined seam fragment can use includes too."""
+    def sub(m):
+        frag = SKILLS / "_fragments" / f"{m.group(1)}.md"
+        if not frag.is_file():
+            # Leave the anchor in place: the FORBIDDEN lint turns it into a
+            # named build failure instead of silently dropping prose.
+            return m.group(0)
+        return frag.read_text(encoding="utf-8").rstrip("\n") + "\n"
+    return INCLUDE_RE.sub(sub, body)
+
+
 def apply_seam(body, seam, fragment_text):
     """Replace the seam anchor line with the fragment (combined) or strip it (others)."""
     anchor = re.compile(r"^[ \t]*<!--[ \t]*dobby:combined-seam:[\w-]+[ \t]*-->[ \t]*\n?", re.M)
@@ -194,6 +216,7 @@ def render_skill(out_name, source_dir, scripts, owner_of, seam=None, fragment_te
     fm = set_name(fm, out_name)
     body = strip_copy_notice(body)
     body = apply_seam(body, seam, fragment_text)
+    body = apply_includes(body)  # after seam: the seam fragment may itself use includes
     if scripts:
         body = rewrite_script_paths(body, scripts, owner_of)
     fm = inject_spec_fields(fm, scenario, body, scripts)
@@ -204,10 +227,11 @@ def render_skill(out_name, source_dir, scripts, owner_of, seam=None, fragment_te
 
 
 def copy_aux(source_dir, dest_dir):
-    """Copy a skill's templates/ (and any non-SKILL.md aux files) verbatim."""
-    tmpl = source_dir / "templates"
-    if tmpl.is_dir():
-        shutil.copytree(tmpl, dest_dir / "templates", dirs_exist_ok=True)
+    """Copy a skill's bundled aux directories (templates/, references/, evals/) verbatim."""
+    for aux in ("templates", "references", "evals"):
+        src = source_dir / aux
+        if src.is_dir():
+            shutil.copytree(src, dest_dir / aux, dirs_exist_ok=True)
 
 
 def resolve_entry(manifest, scenario, skill, entry):
