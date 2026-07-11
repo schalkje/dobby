@@ -72,7 +72,7 @@ How the generator assembles a scenario (using `combined` as the interesting case
    - `combined`'s `implement-pbi` **reuses `github`** and substitutes a named source anchor with the ADO PBI→PR link fragment.
    - `combined`'s `close-pbi` is the one fully hand-authored combined file (state → ADO, evidence → GitHub PR).
 4. Bundle each used `_lib` script once into its owner skill's `scripts/`; set the frontmatter `name` to the user-facing name; strip the seam anchor everywhere it isn't substituted.
-5. Lint every generated `SKILL.md` (no template syntax, no leftover anchor, no retired-backend-skill references, no dispatcher prose) and fail the build on any hit.
+5. Inject portable spec fields (`compatibility` computed from the prose; `scenario`/`generator` provenance merged into `metadata`), then lint every generated `SKILL.md` (no template syntax, no leftover anchor, no retired-backend-skill references, no dispatcher prose, no host/tier/backslash paths) and validate frontmatter against the Agent Skills spec (portable keys only, name/description constraints). Any hit fails the build.
 
 The generator is **non-destructive** to a target's host dirs: it writes/refreshes only the skill folders it owns (the manifest's `common` + each scenario's keys) and prunes only owned folders that don't belong to the chosen scenario. Any other skill folder — the `openspec-*` skills, or a project's own — is left untouched. (Only the throwaway `build/` artifact is fully reset per run.)
 
