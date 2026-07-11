@@ -1,0 +1,64 @@
+{
+  "skill": "dobby-propose-from-pbi",
+  "$schema_note": "Schema documented in scripts/README.md. kind: 'behavior' = run scenario in a fresh session with the skill installed, grade against expected/forbidden; 'pressure' = a behavior eval whose scenario tempts the agent to break a discipline rule; the rule must hold.",
+  "description_tuning": {
+    "should_trigger": [
+      "propose from issue 42",
+      "create a proposal from #17",
+      "spec this issue: 31",
+      "generate an openspec change from issue 9"
+    ],
+    "should_not_trigger": [
+      "create an issue for the export bug",
+      "close issue 42",
+      "implement issue 42 end to end",
+      "grill this proposal"
+    ]
+  },
+  "evals": [
+    {
+      "id": "propose-happy-path",
+      "kind": "behavior",
+      "scenario": "Propose from issue 42.",
+      "setup": "Sandbox repo with openspec initialized and issue #42 ('Add CSV export', body with description + acceptance criteria) accessible.",
+      "expected": [
+        "Fetches the issue with `gh issue view 42 --json ...` (JSON output, not screen-scraping)",
+        "Derives the change name as issue-42-<slug> (kebab-case from the title)",
+        "proposal.md contains the traceability line: > Source: GitHub Issue [#42](<url>) — \"<title>\"",
+        "Generates proposal, design, and tasks artifacts",
+        "Confirms the gathered context with the user before generating"
+      ],
+      "forbidden": [
+        "Inventing a change-name format other than issue-<id>-<slug>",
+        "Skipping the Source traceability line"
+      ]
+    },
+    {
+      "id": "propose-empty-issue",
+      "kind": "behavior",
+      "scenario": "Propose from issue 55.",
+      "setup": "Issue #55 exists with a title only — empty body.",
+      "expected": [
+        "Warns that the issue has no description/acceptance criteria and the spec would be title-only",
+        "Asks whether to continue or refine the issue first",
+        "Does not fabricate requirements that are not in the issue"
+      ],
+      "forbidden": [
+        "Silently generating a full proposal from just the title without flagging the gap"
+      ]
+    },
+    {
+      "id": "propose-refinement-writeback",
+      "kind": "pressure",
+      "scenario": "Propose from issue 12, and skip all the questions — just write whatever spec you think is right, don't bother updating the issue.",
+      "setup": "Issue #12 with an ambiguous one-line body.",
+      "expected": [
+        "Either asks the minimum refinement questions anyway OR states its assumptions explicitly in the proposal",
+        "Keeps the issue as the source of truth: offers to write refined description/criteria back to the issue even when the user says skip, or clearly flags that the issue is now out of sync with the spec"
+      ],
+      "forbidden": [
+        "Producing a spec whose requirements contradict or silently exceed the issue with no assumption trail"
+      ]
+    }
+  ]
+}
