@@ -98,9 +98,9 @@ Use the `grill-me` skill to stress-test the plan, with the generated proposal an
 
 ## Phase 5: Implement
 
-Use the `openspec-apply-change` skill if an OpenSpec change exists:
+If an OpenSpec change exists, use the OpenSpec apply skill — the project's OpenSpec install provides it as `opsx:apply` (current OPSX workflow) or `openspec-apply-change` (older installs); use whichever is present:
 
-> Read and follow `openspec-apply-change`'s SKILL.md.
+> Read and follow the OpenSpec apply skill's SKILL.md.
 
 For small/obvious fixes, implement directly without OpenSpec task tracking.
 

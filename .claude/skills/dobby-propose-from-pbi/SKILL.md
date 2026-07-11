@@ -276,7 +276,7 @@ Present a summary:
   - tasks.md — implementation steps
 - **Source Issue**: #<N> — "<title>"
 
-Ready for implementation! Invoke `/openspec-apply-change <name>` or ask me to implement.
+Ready for implementation! Invoke the OpenSpec apply skill (`/opsx:apply <name>`, or `/openspec-apply-change <name>` on older OpenSpec installs) or ask me to implement.
 ```
 
 ## Error Handling
