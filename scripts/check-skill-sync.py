@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Check that .github/skills/ and .claude/skills/ match what sync-skills.py would produce.
+"""Check that the committed .claude/skills/ and .github/skills/ match what the
+generator's `dev` mode (the **github** scenario) would produce.
 
-Exits 0 when the on-disk host copies match the canonical source byte-for-byte (modulo
-the inserted "do not edit" notice in each SKILL.md). Exits non-zero on drift, naming
-every drifted file and printing the exact command to fix it.
+Exits 0 when the on-disk host copies match the freshly assembled github scenario.
+Exits non-zero on drift, naming every drifted file and printing the exact command
+to fix it (`python scripts/build-skills.py dev`).
 
 Stdlib only.
 """
@@ -12,73 +13,73 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import importlib.util as _ilu
 import sys
 import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+HOSTS = (".claude/skills", ".github/skills")
 
-# Import sync-skills.py as a module despite its hyphenated filename.
-import importlib.util as _ilu  # noqa: E402
-
-_spec = _ilu.spec_from_file_location("sync_skills", REPO_ROOT / "scripts" / "sync-skills.py")
-sync_skills = _ilu.module_from_spec(_spec)
-_spec.loader.exec_module(sync_skills)  # type: ignore[union-attr]
+# Import build-skills.py as a module despite its hyphenated filename.
+_spec = _ilu.spec_from_file_location("build_skills", REPO_ROOT / "scripts" / "build-skills.py")
+build_skills = _ilu.module_from_spec(_spec)
+_spec.loader.exec_module(build_skills)  # type: ignore[union-attr]
 
 
 def _walk_relative(root: Path) -> list[Path]:
     return sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
 
 
-def _diff_trees(expected_root: Path, actual_root: Path) -> list[str]:
-    """Return a list of human-readable drift descriptions. Empty list = no drift."""
+def _diff_skill(expected_dir: Path, actual_dir: Path, label: str) -> list[str]:
+    """Diff one skill folder. Foreign folders are never passed here."""
     issues: list[str] = []
-    expected_files = set(_walk_relative(expected_root)) if expected_root.exists() else set()
-    actual_files = set(_walk_relative(actual_root)) if actual_root.exists() else set()
-
-    for rel in sorted(expected_files - actual_files):
-        issues.append(f"missing in host copy: {actual_root / rel}")
-    for rel in sorted(actual_files - expected_files):
-        issues.append(f"unexpected file in host copy: {actual_root / rel}")
-    for rel in sorted(expected_files & actual_files):
-        if not filecmp.cmp(expected_root / rel, actual_root / rel, shallow=False):
-            issues.append(f"content drift: {actual_root / rel}")
+    expected = set(_walk_relative(expected_dir)) if expected_dir.exists() else set()
+    actual = set(_walk_relative(actual_dir)) if actual_dir.exists() else set()
+    for rel in sorted(expected - actual):
+        issues.append(f"missing in committed copy: {actual_dir / rel}")
+    for rel in sorted(actual - expected):
+        issues.append(f"unexpected file in committed copy: {actual_dir / rel}")
+    for rel in sorted(expected & actual):
+        if not filecmp.cmp(expected_dir / rel, actual_dir / rel, shallow=False):
+            issues.append(f"content drift: {actual_dir / rel}")
     return issues
 
 
 def check() -> int:
-    if not sync_skills.CANONICAL.is_dir():
-        sys.stderr.write(f"error: canonical source not found: {sync_skills.CANONICAL}\n")
-        return 2
-
+    manifest = build_skills.load_manifest()
+    # Only dobby-owned skills are compared; foreign skills (openspec-*, a project's
+    # own) are intentionally ignored — the generator never manages them.
+    owned = sorted(set(manifest["common"]) | set(manifest["scenarios"]["github"].keys()))
     with tempfile.TemporaryDirectory(prefix="dobby-skill-check-") as tmp:
         tmp_root = Path(tmp)
-        sync_skills.sync(target_root=tmp_root)
-
         issues: list[str] = []
-        for host, actual_root in sync_skills.HOST_DIRS.items():
+        for host in HOSTS:
             expected_root = tmp_root / host
-            issues.extend(_diff_trees(expected_root, actual_root))
+            problems = build_skills.assemble(manifest, "github", expected_root)
+            if problems:
+                print("Skill generation FAILED its own lint:", file=sys.stderr)
+                print("\n".join(problems), file=sys.stderr)
+                return 2
+            for name in owned:
+                issues.extend(_diff_skill(expected_root / name, REPO_ROOT / host / name, name))
 
     if issues:
-        print("Skill sync check FAILED. Drift detected:")
+        print("Skill sync check FAILED. Drift between committed copies and the github scenario:")
         for line in issues:
             print(f"  - {line}")
         print()
-        print("To fix, edit only files under skills/<name>/ then run:")
-        print("  python scripts/sync-skills.py")
+        print("To fix, edit only the sources under skills/ then regenerate:")
+        print("  python scripts/build-skills.py dev")
         return 1
 
-    skill_count = sum(1 for d in sync_skills.CANONICAL.iterdir() if d.is_dir())
-    print(
-        f"Skill sync check OK ({skill_count} skill(s) match in .github/skills/ and .claude/skills/)."
-    )
+    n = len(manifest["common"]) + len(manifest["scenarios"]["github"])
+    print(f"Skill sync check OK ({n} skill(s) match the github scenario in .claude/skills/ and .github/skills/).")
     return 0
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.parse_args(argv)
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args(argv)
     return check()
 
 

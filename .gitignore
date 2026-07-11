@@ -4,3 +4,11 @@
 # Python bytecode from scripts/
 __pycache__/
 *.pyc
+
+# Generated scenario skill sets (inspection artifact from `build-skills.py build`)
+build/
+
+# OpenSpec-managed skills — installed via `openspec init` / `openspec update`,
+# not bundled or committed by dobby (the generator leaves them untouched).
+.claude/skills/openspec-*/
+.github/skills/openspec-*/
