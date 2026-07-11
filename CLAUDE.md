@@ -123,6 +123,8 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 
 ### Cross-skill invariants
 
+- **Portability invariants are load-bearing** (see `docs/architecture/portability-and-meta-harnesses.md`): flat generated skill sets, spec-portable frontmatter, no host-specific paths, stdlib-only Python, per-project state in `.dobby/`. They keep dobby consumable by any spec-conforming host or meta-harness without integration work — do not regress them.
+
 - **Scenario is fixed at generation, not invocation**: the generator emits a flat, specialized skill set. There is no dispatcher and no runtime `backend` branch. The `backend` key in `.dobby/config.json` is a **record** of which scenario the skills were generated for, not a router.
 - **Reuse is explicit in `manifest.json`**: never fork a skill by copying its prose. If `combined` needs `ado`'s behavior, the manifest declares `reuse: "ado"`. `_lib` scripts are bundled once per scenario (de-duped by name) under an owner skill — preserving the shared-by-reference pattern.
 - **Generated output is flat and lint-clean**: one `SKILL.md` per user-facing name; no nested `Read … SKILL.md` backend routing, no `backend` branching, no template/macro syntax, no leftover `<!-- dobby:combined-seam:* -->` anchor. The generator's lint enforces this on every run.
