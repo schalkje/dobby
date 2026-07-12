@@ -6,7 +6,8 @@
     "dobby-update-pbi",
     "dobby-propose-from-pbi",
     "dobby-close-pbi",
-    "dobby-implement-pbi"
+    "dobby-implement-pbi",
+    "dobby-triage"
   ],
 
   "common": [
@@ -32,7 +33,8 @@
       "dobby-update-pbi":       { "source": "ado/dobby-update-pbi",       "scripts": ["azdo-update-fields.py", "azdo-get-comments.py"] },
       "dobby-propose-from-pbi": { "source": "ado/dobby-propose-from-pbi", "scripts": ["azdo-update-fields.py"] },
       "dobby-close-pbi":        { "source": "ado/dobby-close-pbi",        "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py"] },
-      "dobby-implement-pbi":    { "source": "ado/dobby-implement-pbi",    "scripts": ["azdo-add-comment.py", "azdo-upload-attachment.py", "azdo-add-dev-links.py"] }
+      "dobby-implement-pbi":    { "source": "ado/dobby-implement-pbi",    "scripts": ["azdo-add-comment.py", "azdo-upload-attachment.py", "azdo-add-dev-links.py"] },
+      "dobby-triage":           { "source": "ado/dobby-triage" }
     },
 
     "github": {
@@ -40,7 +42,8 @@
       "dobby-update-pbi":       { "source": "github/dobby-update-pbi" },
       "dobby-propose-from-pbi": { "source": "github/dobby-propose-from-pbi" },
       "dobby-close-pbi":        { "source": "github/dobby-close-pbi" },
-      "dobby-implement-pbi":    { "source": "github/dobby-implement-pbi" }
+      "dobby-implement-pbi":    { "source": "github/dobby-implement-pbi" },
+      "dobby-triage":           { "source": "github/dobby-triage" }
     },
 
     "combined": {
@@ -48,7 +51,8 @@
       "dobby-update-pbi":       { "reuse": "ado" },
       "dobby-propose-from-pbi": { "reuse": "ado" },
       "dobby-close-pbi":        { "source": "combined/dobby-close-pbi", "scripts": ["azdo-update-fields.py", "azdo-add-comment.py", "azdo-add-dev-links.py", "azdo-delete-comment.py", "azdo-upload-attachment.py"] },
-      "dobby-implement-pbi":    { "reuse": "github", "seam": { "anchor": "dobby:combined-seam:link-pbi-to-pr", "fragment": "combined/_fragments/link-pbi-to-pr.md", "scripts": ["azdo-add-dev-links.py"] } }
+      "dobby-implement-pbi":    { "reuse": "github", "seam": { "anchor": "dobby:combined-seam:link-pbi-to-pr", "fragment": "combined/_fragments/link-pbi-to-pr.md", "scripts": ["azdo-add-dev-links.py"] } },
+      "dobby-triage":           { "reuse": "ado" }
     }
   }
 }
