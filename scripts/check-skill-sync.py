@@ -12,7 +12,6 @@ Stdlib only.
 from __future__ import annotations
 
 import argparse
-import filecmp
 import importlib.util as _ilu
 import sys
 import tempfile
@@ -31,6 +30,15 @@ def _walk_relative(root: Path) -> list[Path]:
     return sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
 
 
+def _same_content(a: Path, b: Path) -> bool:
+    """Byte-equal, or equal after newline normalization. On Windows checkouts
+    with core.autocrlf=true, git smudges committed LF files to CRLF on disk
+    while the generator writes LF — a line-ending-only difference is not
+    drift. Genuine content differences still fail regardless of endings."""
+    ba, bb = a.read_bytes(), b.read_bytes()
+    return ba == bb or ba.replace(b"\r\n", b"\n") == bb.replace(b"\r\n", b"\n")
+
+
 def _diff_skill(expected_dir: Path, actual_dir: Path, label: str) -> list[str]:
     """Diff one skill folder. Foreign folders are never passed here."""
     issues: list[str] = []
@@ -41,7 +49,7 @@ def _diff_skill(expected_dir: Path, actual_dir: Path, label: str) -> list[str]:
     for rel in sorted(actual - expected):
         issues.append(f"unexpected file in committed copy: {actual_dir / rel}")
     for rel in sorted(expected & actual):
-        if not filecmp.cmp(expected_dir / rel, actual_dir / rel, shallow=False):
+        if not _same_content(expected_dir / rel, actual_dir / rel):
             issues.append(f"content drift: {actual_dir / rel}")
     return issues
 
