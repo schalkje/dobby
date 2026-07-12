@@ -31,6 +31,19 @@ MANIFEST = SKILLS / "manifest.json"
 HOSTS = (".claude/skills", ".github/skills")
 SCENARIOS = ("ado", "github", "combined")
 
+# Stamped into every generated skill's metadata block. Bump on generator
+# behavior changes. Deliberately NOT a git SHA: check-skill-sync.py
+# regenerates and diffs, so the stamp must be stable across commits.
+GENERATOR_VERSION = "2.0"
+
+# Top-level frontmatter keys allowed by the Agent Skills spec
+# (https://agentskills.io/specification). Host-specific extensions (Claude's
+# `context`, `hooks`, `disable-model-invocation`, ...) must not ship in
+# generated output: dobby targets both Claude Code and GitHub Copilot CLI,
+# and only these fields are portable across spec-conforming hosts.
+SPEC_FRONTMATTER_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+SPEC_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
 # Patterns that must NOT appear in generated output. Each becomes a build failure.
 FORBIDDEN = [
     (re.compile(r"\{\{|\}\}|\{%|%\}"), "template/macro syntax"),
@@ -40,6 +53,8 @@ FORBIDDEN = [
     (re.compile(r"resolves?\s+`?backend`?\b.*\bfrom\b.*config\.json", re.I), "runtime backend routing prose"),
     (re.compile(r"\.(?:github|claude)/skills/"), "host-specific skills path (reference skills by name instead)"),
     (re.compile(r"\bskills/(?:ado|github|combined|_common|_lib)/"), "source-repo tier path (use a bundled-relative path instead)"),
+    (re.compile(r"[A-Za-z]:\\|(?:templates|scripts|skills|docs|\.dobby|\.github|\.claude)\\[\w.-]"),
+     "backslash path (the spec requires forward slashes, also on Windows)"),
 ]
 
 
@@ -65,6 +80,74 @@ def set_name(frontmatter, name):
     if re.search(r"(?m)^name:\s*.*$", frontmatter):
         return re.sub(r"(?m)^name:\s*.*$", f"name: {name}", frontmatter, count=1)
     return f"name: {name}\n{frontmatter}"
+
+
+METADATA_BLOCK_RE = re.compile(r"(?ms)^metadata:[ \t]*\n((?:[ \t]+\S.*\n?)*)")
+
+
+def compute_compatibility(body, scripts):
+    """Derive the spec `compatibility` string (environment requirements) from
+    what the skill's prose actually invokes."""
+    reqs = []
+    if re.search(r"\baz (?:boards|repos|devops|account|extension)\b", body):
+        reqs.append("Azure CLI (az) with the azure-devops extension, authenticated")
+    if re.search(r"\bgh (?:auth|issue|pr|repo|api|label|search)\b", body):
+        reqs.append("GitHub CLI (gh), authenticated")
+    if scripts or re.search(r"(?m)^\s*python\s+\S", body):
+        reqs.append("Python 3 (stdlib only)")
+    if re.search(r"\bopenspec\b", body, re.I):
+        reqs.append("OpenSpec CLI")
+    if re.search(r"\bgit worktree\b", body):
+        reqs.append("git 2.5+ (worktree support)")
+    return "; ".join(reqs)
+
+
+def inject_spec_fields(frontmatter, scenario, body, scripts):
+    """Merge generator provenance into the source's `metadata:` block and add a
+    computed `compatibility:` field. Source-authored metadata keys win."""
+    meta = {}
+    m = METADATA_BLOCK_RE.search(frontmatter)
+    if m:
+        for line in m.group(1).splitlines():
+            if ":" in line:
+                k, _, v = line.strip().partition(":")
+                meta[k.strip()] = v.strip()
+        frontmatter = METADATA_BLOCK_RE.sub("", frontmatter).rstrip("\n")
+    meta.setdefault("author", "dobby")
+    meta["scenario"] = scenario
+    meta["generator"] = f"build-skills {GENERATOR_VERSION}"
+
+    lines = [frontmatter.rstrip("\n")] if frontmatter.strip() else []
+    compat = compute_compatibility(body, scripts)
+    if compat and not re.search(r"(?m)^compatibility:", frontmatter):
+        lines.append(f"compatibility: {compat}")
+    lines.append("metadata:")
+    for k, v in meta.items():
+        lines.append(f"  {k}: {v}")
+    return "\n".join(lines)
+
+
+def validate_frontmatter(name, frontmatter):
+    """Enforce the portable Agent Skills spec on generated frontmatter."""
+    problems = []
+    keys = re.findall(r"(?m)^([A-Za-z][\w-]*):", frontmatter or "")
+    for key in keys:
+        if key not in SPEC_FRONTMATTER_KEYS:
+            problems.append(f"  {name}: non-portable frontmatter key '{key}' (spec allows: {', '.join(sorted(SPEC_FRONTMATTER_KEYS))})")
+    fm_name = re.search(r"(?m)^name:\s*(.+)$", frontmatter or "")
+    fm_name = fm_name.group(1).strip() if fm_name else ""
+    if fm_name != name:
+        problems.append(f"  {name}: frontmatter name '{fm_name}' does not match the skill directory name")
+    if not SPEC_NAME_RE.match(fm_name) or len(fm_name) > 64:
+        problems.append(f"  {name}: name violates the spec (lowercase/digits/hyphens, max 64 chars)")
+    desc = re.search(r"(?m)^description:\s*(.+)$", frontmatter or "")
+    desc = desc.group(1).strip() if desc else ""
+    if not 1 <= len(desc) <= 1024:
+        problems.append(f"  {name}: description missing or over 1024 chars ({len(desc)})")
+    compat = re.search(r"(?m)^compatibility:\s*(.+)$", frontmatter or "")
+    if compat and len(compat.group(1)) > 500:
+        problems.append(f"  {name}: compatibility exceeds the spec's 500-char limit")
+    return problems
 
 
 def rewrite_script_paths(body, scripts, owner_of):
@@ -104,7 +187,7 @@ def strip_copy_notice(body):
     return re.sub(r"^\s*<!--\s*This file is a copy of.*?-->\s*\n", "", body, count=1, flags=re.S)
 
 
-def render_skill(out_name, source_dir, scripts, owner_of, seam=None, fragment_text=None, source_label=None):
+def render_skill(out_name, source_dir, scripts, owner_of, seam=None, fragment_text=None, source_label=None, scenario=""):
     """Return the rendered SKILL.md text for one skill."""
     raw = (source_dir / "SKILL.md").read_text(encoding="utf-8")
     fm, body = split_frontmatter(raw)
@@ -113,6 +196,7 @@ def render_skill(out_name, source_dir, scripts, owner_of, seam=None, fragment_te
     body = apply_seam(body, seam, fragment_text)
     if scripts:
         body = rewrite_script_paths(body, scripts, owner_of)
+    fm = inject_spec_fields(fm, scenario, body, scripts)
     label = source_label or source_dir.relative_to(SKILLS).as_posix()
     notice = (f"<!-- Generated by scripts/build-skills.py from skills/{label}/SKILL.md — "
               f"do not edit this copy; edit the source and regenerate. -->\n")
@@ -165,7 +249,7 @@ def assemble(manifest, scenario, dest_root):
     # 1. scenario-independent skills (verbatim, name = folder)
     for name in manifest["common"]:
         src = SKILLS / "_common" / name
-        rendered[name] = render_skill(name, src, [], owner_of, source_label=f"_common/{name}")
+        rendered[name] = render_skill(name, src, [], owner_of, source_label=f"_common/{name}", scenario=scenario)
         sources[name] = src
 
     # 2. scenario-specialized work-item skills
@@ -178,14 +262,18 @@ def assemble(manifest, scenario, dest_root):
             skill, source_dir, scripts, owner_of,
             seam=seam, fragment_text=fragment_text,
             source_label=source_dir.relative_to(SKILLS).as_posix(),
+            scenario=scenario,
         )
         sources[skill] = source_dir
         for s in scripts:
             used_scripts[s] = owner_of[s]
 
-    # 3. lint every rendered skill (after seam substitution + path rewrite)
+    # 3. lint every rendered skill (after seam substitution + path rewrite):
+    #    forbidden patterns in the full text, spec conformance on the frontmatter
     for name, text in rendered.items():
         problems += lint(name, text)
+        fm, _ = split_frontmatter(text)
+        problems += validate_frontmatter(name, fm)
     if problems:
         return problems
 
