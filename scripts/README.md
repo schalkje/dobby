@@ -12,6 +12,7 @@ Dobby skills are **assembled per scenario at build time** rather than routed at 
 |---|---|
 | `skills/_lib/` | Shared helper scripts (`azdo-*.py`), authored once; bundled into a scenario only when used. |
 | `skills/_common/` | Scenario-independent, dobby-authored skills (`grill-*`, `dobby-worktree`); copied into **every** scenario. (The `openspec-*` skills are **not** here — they're installed per-project by the OpenSpec CLI.) |
+| `skills/_fragments/` | Shared prose fragments, authored once and woven into any source SKILL.md at build time via `<!-- dobby:include:NAME -->` anchors (see below). |
 | `skills/ado/` | ADO-specialized skill prose, under the user-facing names (`dobby-{create,update,propose,close,implement}-pbi`). |
 | `skills/github/` | GitHub-specialized skill prose, same user-facing names. |
 | `skills/combined/` | Only the skills that genuinely span both backends (`dobby-close-pbi`), plus `_fragments/` woven into reused sources. |
@@ -29,6 +30,31 @@ A single, stdlib-parseable manifest declares, per scenario, how each user-facing
   - `{ "source": "<tier>/<skill>", "scripts": [...] }` — assemble from this source file, bundling the listed `_lib` scripts.
   - `{ "reuse": "<other-scenario>" }` — reuse another scenario's assembled skill verbatim (used by `combined` for create/update/propose, which reuse `ado`).
   - `{ "reuse": "github", "seam": { "anchor": "...", "fragment": "...", "scripts": [...] } }` — reuse a source and substitute a named source anchor with a prose fragment (used by `combined`'s `implement-pbi` to weave in the ADO PBI→PR link step). The anchor is stripped from every other scenario, so generated output never contains it.
+
+### `skills/_fragments/` (includes)
+
+Prose that recurs across skills (prerequisite checks, `.dobby/config.json` examples, the
+ADO dev-links instructions, command-execution rules) is authored **once** as a fragment under
+`skills/_fragments/<name>.md`. Any source SKILL.md — and the combined seam fragment — can pull it
+in with an anchor line:
+
+```markdown
+<!-- dobby:include:ado-prereqs -->
+```
+
+At build time the generator replaces the anchor with the fragment's content, so generated output
+stays flat and self-contained while sources never duplicate the prose. Rules:
+
+- **No nesting** — a fragment cannot include another fragment. (The combined seam fragment may use
+  includes because the seam is substituted *before* includes are applied.)
+- Fragments may reference `skills/_lib/<script>.py` paths; the generator rewrites them per skill to
+  the bundled `<owner-skill>/scripts/<script>` location, exactly as it does in SKILL.md prose.
+- A missing fragment is a **build failure**: the anchor is left in place and the
+  `dobby:include:` lint rule names it.
+
+Skill folders may also carry `templates/`, `references/`, and `evals/` directories — all three are
+bundled verbatim into the generated skill alongside `SKILL.md` (`references/` holds
+progressive-disclosure detail the SKILL.md points to; keep references one level deep).
 
 ### `build-skills.py`
 

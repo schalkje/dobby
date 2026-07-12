@@ -31,7 +31,7 @@ Read **both** blocks from `.dobby/config.json`:
 
 Both must be populated for combined mode. If either is missing, prompt and persist.
 
-**`ado.devLinks`** controls how commit/branch/PR links attach to the PBI (used in step 7). Since the repo is GitHub, the relevant fields are `repoReachableFromAdo` and, when `true`, `githubConnectionId` (the GUID of the project's Boards ↔ GitHub connection). If `repoReachableFromAdo` is `false` or unknown, links are added as plain **Hyperlinks** (always resolvable) rather than ArtifactLinks.
+**`ado.devLinks`** controls how commit/branch/PR links attach to the PBI — its fields and the ArtifactLink-vs-Hyperlink behavior are documented in step 7. Since the repo is GitHub, the relevant fields are the reachability flag and, when reachable, `githubConnectionId`.
 
 ## ⛔ Command Execution Rules
 
@@ -111,16 +111,9 @@ python skills/_lib/azdo-add-comment.py \
 
 ### 7. Add Development Links (GitHub commit / branch / PR → ADO PBI)
 
-Link the GitHub commit, branch, and PR to the PBI. Link type depends on `ado.devLinks.repoReachableFromAdo`:
-```bash
-python skills/_lib/azdo-add-dev-links.py \
-    --work-item-id <id> --org "<org-url>" --project "<project>" \
-    --commit-url "https://github.com/<owner>/<repo>/commit/<full-sha>" --commit-comment "<subject> (<short-sha>)" \
-    --branch-url "https://github.com/<owner>/<repo>/tree/<branch>" --branch-comment "Implementation branch" \
-    --pr-url "<pr-url>" --pr-comment "PR #<pr-number>" \
-    [--gh-connection-id <guid>]
-```
-With `--gh-connection-id` (and `repoReachableFromAdo: true`) the commit/PR attach as ArtifactLinks; otherwise as Hyperlinks. Use the **full 40-char SHA**. Push the branch first so the URLs resolve.
+The commit URL is `https://github.com/<owner>/<repo>/commit/<full-sha>` and the branch URL is `https://github.com/<owner>/<repo>/tree/<branch>`.
+
+<!-- dobby:include:ado-dev-links -->
 
 ### 8. Acceptance Criteria & Close (Azure DevOps)
 

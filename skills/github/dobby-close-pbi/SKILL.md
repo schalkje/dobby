@@ -1,6 +1,6 @@
 ---
 name: dobby-close-pbi
-description: Closes a GitHub Issue via its Pull Request, committing visual evidence to the PR branch and relying on Closes-on-merge for closure.
+description: Closes a GitHub Issue via its Pull Request — commits visual evidence to the PR branch, embeds it in the PR description, and relies on Closes-on-merge for closure. Use for "close issue", "close pbi", "close this", "wrap up", "wrap up this ticket", "finish this issue", or "mark issue done".
 metadata:
   author: dobby
   version: "1.0"
@@ -23,26 +23,15 @@ If no PR references the target issue, the skill stops and asks the user to creat
 
 ## Defaults
 
-Read the `github` block from `.dobby/config.json` for `owner` and `repo`. If missing, prompt and persist as in `dobby-create-pbi`.
+<!-- dobby:include:github-config-example -->
 
 ## Steps
 
 ### 1. Validate Prerequisites
 
-**1a. Check gh CLI**
-```bash
-gh --version
-```
-- If `gh` is not found → stop: "GitHub CLI is not installed."
+<!-- dobby:include:github-prereqs -->
 
-**1b. Check authentication**
-```bash
-gh auth status
-```
-- If not authenticated → stop: "Run: `gh auth login`"
-- Display the active GitHub user.
-
-**1c. Check git working tree**
+**Check git working tree**
 ```bash
 git status --porcelain
 ```
@@ -160,7 +149,7 @@ git push origin <headRefName>
 
 **Guardrails:**
 - Stage only `docs/evidence/issue-<N>/` — never `git add .` or `git add -A`.
-- If the working tree has unrelated uncommitted changes, the warning in step 1c already gave the user a chance to abort.
+- If the working tree has unrelated uncommitted changes, the working-tree warning in step 1 already gave the user a chance to abort.
 - If the user is not currently on the PR branch, switch to it (this is why the PR branch was recorded in step 4).
 - Push **before** updating the PR description, so the embedded image URLs resolve immediately for reviewers.
 
