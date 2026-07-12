@@ -45,7 +45,7 @@ Read the `ado` block from `.dobby/config.json` in the repository root. Example s
 ### ⛔ Command Execution Rules
 
 - **No piping.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output — no `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
-- **Use canonical `skills/` paths.** Reference scripts from the canonical `skills/` directory — e.g., `python skills/_lib/...`, not from `.github/skills/` or `.claude/skills/` host copies.
+- **Resolve bundled scripts relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder — e.g., `python skills/_lib/azdo-add-comment.py`. Never reach back into dobby's source repository for them.
 
 ### 1. Validate Prerequisites
 

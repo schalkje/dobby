@@ -15,10 +15,11 @@ Stress-test the requirements of a PBI (Azure DevOps) or Issue (GitHub) by interr
    - ADO: `az boards work-item show --id <id> --output json`
    - GitHub: `gh issue view <number> --json title,body,labels,milestone`
 
-3. **Read the relevant template** to understand what "good" looks like for this project:
-   - ADO PBIs: read `skills/ado/dobby-create-pbi/templates/pbi-template.md`
-   - ADO Features: read `skills/ado/dobby-create-pbi/templates/feature-template.md`
-   - GitHub Issues: read `skills/github/dobby-create-pbi/templates/issue-template.md`
+3. **Read the relevant template** to understand what "good" looks like for this project. The templates ship with the installed `dobby-create-pbi` skill, under its `templates/` folder:
+   - ADO PBIs: `dobby-create-pbi/templates/pbi-template.md`
+   - ADO Features: `dobby-create-pbi/templates/feature-template.md`
+   - GitHub Issues: `dobby-create-pbi/templates/issue-template.md`
+   (Only the installed scenario's templates exist — use whichever is present.)
 
 4. **Choose depth.** Make an educated guess based on the work item's complexity:
    - **Quick** (3–5 questions): small, well-scoped items with clear acceptance criteria
@@ -72,5 +73,5 @@ Produce a structured summary:
 Then ask: **"Do you want me to apply these updates to the PBI/issue?"**
 
 If yes, follow the appropriate update path:
-- ADO: read and follow `skills/dobby-update-pbi/SKILL.md` with the proposed changes
+- ADO: read and follow the `dobby-update-pbi` skill's SKILL.md with the proposed changes
 - GitHub: use `gh issue edit <number> --body-file <file>` with the updated body

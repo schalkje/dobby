@@ -23,7 +23,7 @@ These rules prevent the most common and costly mistakes. Violating any one produ
 6. **Always create items as `--type "Product Backlog Item"`.** Do not use `--type Task` unless explicitly creating a Task (a sub-work-item of a PBI).
 7. **Always use the helper script for multiline fields** — both on create and on update. `az boards` cannot set markdown format.
 8. **Run commands exactly as shown — no piping, no post-processing.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output. This includes `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
-9. **Use canonical `skills/` paths for all file reads and script invocations.** Reference scripts and templates from the canonical `skills/` directory — e.g., `python skills/_lib/azdo-update-fields.py`, not from `.github/skills/` or `.claude/skills/` host copies.
+9. **Resolve bundled files relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder and templates under this skill's `templates/` folder — e.g., `python skills/_lib/azdo-update-fields.py` and `templates/pbi-template.md`. Never reach back into dobby's source repository for them.
 
 ## ADO Work Item Hierarchy
 
@@ -184,7 +184,7 @@ Collect all missing fields in a single prompt where possible (batch into one ask
 
 > ⚠️ **Always follow the template structure.** Read the template file first, then populate each section. Do not invent an ad-hoc format.
 
-Generate content following the template in `skills/ado/dobby-create-pbi/templates/pbi-template.md`. The template defines two Azure DevOps fields, both stored as **Markdown**:
+Generate content following the template in `templates/pbi-template.md` (bundled with this skill). The template defines two Azure DevOps fields, both stored as **Markdown**:
 
 **Description** (`System.Description`) — populate with:
 - User story in `> **As** [role] **of** [system], **I want** ..., **so that** ...` format
