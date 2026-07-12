@@ -1,0 +1,100 @@
+---
+name: dobby-triage
+description: Lists and triages open GitHub Issues — read-only survey with filters, staleness flags, and a suggested next dobby skill per item. Use for "triage", "list issues", "list my issues", "what's open", "show the backlog", or "what should I work on".
+metadata:
+  author: dobby
+  version: "1.0"
+---
+
+Survey open GitHub Issues and suggest the next lifecycle step for each. This skill is **strictly read-only**: it never creates, edits, labels, comments on, or closes anything — it observes and hands off.
+
+**Input**: Optional filters — state, labels, assignee, free-text keywords, a result limit. With no input, it lists open issues, newest activity first.
+
+## Critical rule
+
+**Read-only, no exceptions.** Every action a triage surfaces (refine, spec, implement, close) belongs to the skill that owns it — see the handoff table in step 5. This skill runs only `gh` read commands (`list`, `view`, `search`, `status`).
+
+Excuses the model will be tempted by — and why they're wrong:
+
+| Rationalization | Reality |
+|---|---|
+| "These stale ones are obviously dead — close them while I'm here" | Closing is `dobby-close-pbi`'s job and requires a referencing PR. A triage that mutates is no longer a safe default command. |
+| "I'll just fix this typo in the title" | Even one-field edits belong to `dobby-update-pbi`, where confirmation and refinement rules apply. Suggest it; don't do it. |
+| "Adding a label is harmless" | It mutates shared team state from a command the user ran to *look*. Recommend the label in the output instead. |
+
+## Defaults
+
+<!-- dobby:include:github-config-example -->
+
+## Steps
+
+### 1. Validate Prerequisites
+
+<!-- dobby:include:github-prereqs -->
+
+### 2. Resolve Owner and Repo
+
+Load the `github` block from `.dobby/config.json`; if `owner`/`repo` are missing, ask once ("Which repo? `owner/repo`"). Do **not** persist config from this skill — it is read-only; point the user at any create/update flow for persisting defaults.
+
+### 3. Parse Filters
+
+From the user's request, extract any of:
+
+| Filter | Maps to |
+|---|---|
+| state ("open", "closed", "all") | `--state <value>` (default: `open`) |
+| label(s) | `--label "<name>"` (repeatable) |
+| assignee ("mine" → the authenticated user) | `--assignee "<login>"` or `--assignee "@me"` |
+| free-text keywords | `--search "<keywords>"` |
+| limit ("top 10") | `--limit <n>` (default: 30) |
+
+### 4. Fetch
+
+```bash
+gh issue list --repo "<owner>/<repo>" --state open --limit 30 \
+    --json number,title,labels,assignees,updatedAt,milestone,comments
+```
+
+Add the filter flags from step 3. Read the JSON output directly — no piping.
+
+If the result count equals the limit, say so in the output ("showing the 30 most recently updated — more exist; narrow with a filter or raise the limit"). Never present a capped list as the full backlog.
+
+### 5. Present the Triage Table
+
+Sort by `updatedAt` descending. Mark an issue **stale** when its last update is more than 30 days old. For each item, derive a **suggested next step** (a suggestion in text — do not invoke anything unless asked):
+
+| Observation | Suggested skill |
+|---|---|
+| Body is empty/thin or has no acceptance criteria | `dobby-update-pbi` — refine it first |
+| Well-formed but no spec exists | `dobby-propose-from-pbi` |
+| A matching `openspec/changes/issue-<N>-*` exists, or the change is trivially small | `dobby-implement-pbi` |
+| A merged/open PR already references it, or all criteria are checked | `dobby-close-pbi` |
+
+(Check for spec dirs with a quick glob of `openspec/changes/`; check PR references only if cheap — `gh pr list --search "<N> in:body"` — skip when the list is long.)
+
+```
+## Open issues — <owner>/<repo>  (<count> shown, sorted by last activity)
+
+| # | Title | Labels | Assignee | Updated | Status | Suggested next |
+|---|-------|--------|----------|---------|--------|----------------|
+| 24 | Distribute scenario builds… | enhancement | — | 2026-07-11 | active | propose (dobby-propose-from-pbi) |
+| 12 | Login flaky on Safari | bug | jeroen | 2026-05-30 | ⚠️ stale | refine (dobby-update-pbi) |
+```
+
+After the table, give a one-paragraph read of the backlog: what's stale, what's ready to pick up, what needs refinement.
+
+### 6. Hand Off (only on request)
+
+If the user picks an item and an action ("refine #12", "implement #24"), read and follow the owning skill's SKILL.md with that issue as input. Do not perform the action inline.
+
+## Error Handling
+
+- **Repo not accessible**: report the resolved `owner/repo` and suggest checking spelling/permissions. Do not guess another repo.
+- **No issues match**: say so and show which filters were applied — don't silently widen the search.
+- **Wrong identity**: if `gh auth status` shows an unexpected account, suggest `gh auth switch` before listing (results are permission-dependent).
+
+## Guardrails
+
+- Read-only: no `gh issue create/edit/close/comment`, no `gh pr` mutations, no label changes.
+- No piping — read full JSON output and extract fields in your own reasoning.
+- Never fabricate items or counts; when capped, say so.
