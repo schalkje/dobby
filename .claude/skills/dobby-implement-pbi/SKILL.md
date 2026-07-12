@@ -47,9 +47,20 @@ Before starting, check what already exists to support resume:
 - Uncommitted changes: `git status --short`
 - Existing PR: `gh pr list --head <branch> --json number,url,body`
 - Issue state: `gh issue view <N> --json state` — already Closed?
+- Ledger: does `.dobby/evidence/<N>/ledger.md` exist? If so, read it before anything else
 ```
 
 If a matching worktree exists, report its path and suggest changing to that directory before proceeding. Report findings and propose which phases to skip.
+
+### Progress ledger (durable resume state)
+
+Maintain a ledger file at `.dobby/evidence/<work-item-id>/ledger.md` (gitignored) for the whole run:
+
+- After completing each phase, append one line:
+  `Phase <N> (<name>): complete — commits <base7>..<head7>, <one-line result>`
+  (use `git log --oneline` to fill the commit range; write `no commits` for phases that don't commit).
+- On resume — including after context compaction — **read the ledger and `git log` first and trust them over your own recollection** of what happened earlier in the session.
+- The ledger is the source of truth for "which phases are done"; the conversation is not.
 
 ## Phase 1: Create Branch
 
@@ -109,6 +120,16 @@ For small/obvious fixes, implement directly without OpenSpec task tracking.
 ## Phase 6: Verify
 
 Run the project's verification suite (e.g., `npm run typecheck`, `npm run lint`, `npm run test`). Report results. If failures occur, determine whether they are pre-existing or caused by the change.
+
+### Verification gate — before any completion claim
+
+Before stating that anything is done (a phase, the implementation, the closure):
+
+1. **Identify** the command that would prove the claim (test run, build, `gh pr view`, work-item state query).
+2. **Run it fresh** — do not reuse output from earlier in the session.
+3. **Read the full output**, then claim the result citing that output.
+
+Never claim completion with "should", "probably", or "seems to". Work that was not verified is reported as *unverified*, not as done.
 
 ## Phase 7: Capture After Evidence (UI changes)
 

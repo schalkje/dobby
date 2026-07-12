@@ -7,6 +7,8 @@ metadata:
 
 Stress-test an OpenSpec proposal by interrogating its scope, goals, non-goals, approach choice, and feasibility.
 
+<!-- dobby:include:minimal-context-review -->
+
 ## Before you start
 
 1. **Identify the change.** The user should name or have recently generated an OpenSpec change. If no change is in context, check:

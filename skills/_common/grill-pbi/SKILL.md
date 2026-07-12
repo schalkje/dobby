@@ -7,6 +7,8 @@ metadata:
 
 Stress-test the requirements of a PBI (Azure DevOps) or Issue (GitHub) by interrogating its completeness, clarity, and readiness for implementation.
 
+<!-- dobby:include:minimal-context-review -->
+
 ## Before you start
 
 1. **Identify the work item.** The user should provide or have recently created/updated a PBI or issue. If no work item is in context, ask: "Which PBI or issue should I grill?"

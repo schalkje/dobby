@@ -13,6 +13,13 @@ metadata:
 
 Stress-test the requirements of a PBI (Azure DevOps) or Issue (GitHub) by interrogating its completeness, clarity, and readiness for implementation.
 
+### Dispatching review work (when the host supports subagents)
+
+- **Pass artifacts as file paths, not pasted text** — pasted content stays resident in context for the rest of the session. Write the item under review (issue body, proposal, diff) to a file and hand over the path.
+- **Give the reviewer minimal context**: only the artifact plus the spec/constraints it must be judged against — never the conversation history. A reviewer that sees the whole conversation role-plays as the author. Do include the actual spec: a reviewer given only a diff silently redefines "spec" as whatever the diff implies.
+- **Never instruct a reviewer to ignore or not flag a specific issue.**
+- **Match model to task**: use a capable model for review and architecture judgments; mechanical work (formatting, evidence collection) can go to a cheaper one.
+
 ## Before you start
 
 1. **Identify the work item.** The user should provide or have recently created/updated a PBI or issue. If no work item is in context, ask: "Which PBI or issue should I grill?"

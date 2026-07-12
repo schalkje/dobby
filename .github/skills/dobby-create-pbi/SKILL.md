@@ -152,6 +152,12 @@ gh issue create \
 - If milestone is not found, list available milestones (`gh api repos/<owner>/<repo>/milestones --jq '.[].title'`) and ask.
 - Do **not** retry creation automatically — prevents duplicates.
 
+Excuses the model will be tempted by — and why they're wrong:
+
+| Rationalization | Reality |
+|---|---|
+| "The failure was probably transient — just retry" | A timeout may still have created the issue. Search for it first (`gh issue list --search`), then fix the input and ask before any second attempt. |
+
 Clean up the temp body file after successful creation.
 
 **5c. Link parent (if specified)**

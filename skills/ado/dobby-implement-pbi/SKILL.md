@@ -42,11 +42,14 @@ Before starting, check what already exists to support resume:
 - Uncommitted changes: `git status --short`
 - Existing PR: `gh pr list --head <branch> --json number,url`
 - PBI state: already Done?
+- Ledger: does `.dobby/evidence/<id>/ledger.md` exist? If so, read it before anything else
 ```
 
 If a matching worktree exists, report its path and suggest changing to that directory before proceeding.
 
 Report findings and propose which phases to skip.
+
+<!-- dobby:include:progress-ledger -->
 
 ## Phase 1: Create Branch
 
@@ -175,6 +178,8 @@ npm run test
 ```
 
 Report results. If failures occur, determine if they are pre-existing or caused by the change.
+
+<!-- dobby:include:verification-gate -->
 
 ## Phase 7: Capture After Evidence
 

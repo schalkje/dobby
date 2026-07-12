@@ -25,6 +25,14 @@ These rules prevent the most common and costly mistakes. Violating any one produ
 8. **Run commands exactly as shown — no piping, no post-processing.** Every `az` and `python` command in this skill is designed to be run standalone with `--output json`. Do NOT append any pipe (`|`) to transform, filter, or format the output. This includes `| ConvertFrom-Json`, `| Select-Object`, `| jq`, `| python -c "..."`, `| grep`, or any other pipe. Read the full JSON output and extract fields in your own reasoning.
 9. **Resolve bundled files relative to the installed skill set.** Scripts ship under their owning skill's `scripts/` folder and templates under this skill's `templates/` folder — e.g., `python skills/_lib/azdo-update-fields.py` and `templates/pbi-template.md`. Never reach back into dobby's source repository for them.
 
+Excuses the model will be tempted by — and why they're wrong:
+
+| Rationalization | Reality |
+|---|---|
+| "`--description` with escaped newlines will work this once" | It truncates at the first newline — silently, with exit code 0. The two-step create + helper script is the only safe path. |
+| "HTML renders fine in ADO" | The helper sets these fields to Markdown format; HTML in a markdown-formatted field renders as escaped raw tags, not formatting. |
+| "The create probably failed — just retry it" | The work item may exist anyway. Query for it first, then ask — never auto-retry. |
+
 Before writing any multiline field content, read `references/markdown-gotchas.md` — non-obvious ADO markdown failure modes (work-item links, code blocks, format flags).
 
 Creating or refining a **Bug**? Read `references/bug-workflow.md` and follow it (different fields and template, same critical rules).

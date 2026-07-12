@@ -21,6 +21,14 @@ GitHub's native closure mechanism is "PR merge with `Closes #N`". This skill lea
 
 If no PR references the target issue, the skill stops and asks the user to create one first.
 
+Excuses the model will be tempted by — and why they're wrong:
+
+| Rationalization | Reality |
+|---|---|
+| "Sprint ends now — close it manually just this once" | A manually closed issue has no PR, no evidence trail. Open a minimal PR referencing the issue instead; that's faster than repairing traceability later. |
+| "The PR can come later" | Closes-on-merge IS the evidence chain. Closing first destroys it, and nothing enforces that the PR ever comes. |
+| "The user explicitly told me to" | Explain once, offer the compliant fast path. This skill never runs `gh issue close`. |
+
 ## Defaults
 
 <!-- dobby:include:github-config-example -->
@@ -223,6 +231,8 @@ gh issue comment <N> --repo "<owner>/<repo>" --body-file <path-to-comment.md>
 ```
 
 Skip if the user declines. The comment is purely informational — closure still happens at PR merge.
+
+<!-- dobby:include:verification-gate -->
 
 ### 13. Display Result
 

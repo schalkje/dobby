@@ -7,6 +7,8 @@ metadata:
 
 Stress-test an OpenSpec design by interrogating its architecture, implementation strategy, trade-offs, and risks.
 
+<!-- dobby:include:minimal-context-review -->
+
 ## Before you start
 
 1. **Identify the change.** The user should name or have recently generated an OpenSpec change. If no change is in context, check:
