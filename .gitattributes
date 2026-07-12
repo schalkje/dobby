@@ -1,0 +1,18 @@
+# Normalize text files to LF in the repo AND in working copies.
+#
+# The skill generator (scripts/build-skills.py) writes LF. Without an eol
+# pin, Windows checkouts with core.autocrlf=true smudge the committed copies
+# to CRLF on disk, which makes byte-comparing tools report false drift and
+# floods every git command with "LF will be replaced by CRLF" warnings.
+* text=auto
+*.md   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# PowerShell wrapper keeps the platform-native default (text=auto above).
+
+*.png binary
+*.jpg binary
+.gitattributes text eol=lf
