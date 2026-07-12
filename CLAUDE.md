@@ -119,6 +119,7 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 |---|---|
 | `scripts/build-skills.py` | The scenario-skill generator. `build` (all → `build/<scenario>/`), `init <target> <scenario>`, `dev` (github → dobby's own `.claude/skills/` + `.github/skills/`). |
 | `scripts/check-skill-sync.py` | Verifies dobby's committed host copies match the generator's `dev` (github) output. Exits non-zero with the drifted files on failure. |
+| `scripts/run-skill-evals.py` | Validates (`--validate`, in CI), lists, and emits manual run sheets for the per-skill eval definitions (`skills/*/*/evals/evals.json`). When editing a skill that has evals, re-run its evals. Schema in `scripts/README.md`. |
 
 ### Cross-skill invariants
 

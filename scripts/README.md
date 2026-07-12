@@ -159,6 +159,21 @@ Generated skills read `.dobby/config.json` for the per-backend connection detail
 
 For `"ado"` or `"github"` backends, only the active backend's block is required. For `"combined"`, both `ado` and `github` blocks must be populated. The `worktree` and `userReminders` blocks are optional for any backend.
 
+## Skill evals
+
+Skills are tested like code: each tested skill carries an `evals/evals.json` next to its source (bundled into generated output by the generator). The file holds:
+
+- `description_tuning.should_trigger` / `should_not_trigger` — prompts for measuring whether the skill's description fires at the right moments (over-triggering is as real a failure as under-triggering).
+- `evals[]` — scenarios run in a **fresh** session with the skill installed, graded against `expected` (must observe) and `forbidden` (must not observe) behavior lists. Required keys per eval: `id`, `kind` (`behavior` or `pressure`), `scenario`, `setup`, `expected`, `forbidden`. Every skill needs ≥3 evals including ≥1 `pressure` eval — a scenario that actively tempts the agent to break a discipline rule (never auto-retry creation, never `gh issue close`, …).
+
+```bash
+python scripts/run-skill-evals.py --validate          # schema check (runs in CI)
+python scripts/run-skill-evals.py --list              # summary of all evals
+python scripts/run-skill-evals.py --run-sheet out.md  # manual grading checklist
+```
+
+Running the sessions and grading is model-in-the-loop and deliberately not automated here; use the run sheet by hand, or the `skill-creator` plugin's eval harness for automated grading. **When you edit a skill that has evals, re-run its evals before committing** — write the skill change like a TDD cycle: capture the failure first (run the scenario without the change), then make the minimal edit that fixes it.
+
 ## Why these scripts exist
 
 Symlinks would work on macOS/Linux but are fragile on Windows (the primary dev OS for this repo) and aren't always preserved by git. A small copy-and-check pair is cross-platform and gives a clear failure mode (the check script names the drifted file).

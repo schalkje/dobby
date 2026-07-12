@@ -27,6 +27,12 @@ jobs:
       - name: Check committed host copies for drift
         run: python scripts/check-skill-sync.py
 
+      # Schema-check the per-skill eval definitions (skills/*/*/evals/evals.json).
+      # Running the evals themselves is model-in-the-loop and stays manual —
+      # see scripts/run-skill-evals.py --run-sheet.
+      - name: Validate skill evals
+        run: python scripts/run-skill-evals.py --validate
+
       # Optional deeper conformance pass with the official spec validator
       # (https://github.com/agentskills/agentskills — `skills-ref`). Not yet
       # enabled: pin a released version before adding, per supply-chain policy.
