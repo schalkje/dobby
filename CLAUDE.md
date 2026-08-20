@@ -38,7 +38,7 @@ Run `dev` **before committing** any skill-source edit. See [`scripts/README.md`]
 
 ## Architecture (the big picture you can't get from one file)
 
-A project targets exactly one scenario, so dobby specializes the skills for it **at generation time** rather than routing at every invocation. The generator (`scripts/build-skills.py`) assembles a **flat** skill set under the user-facing names (`dobby-create-pbi`, `dobby-update-pbi`, `dobby-propose-from-pbi`, `dobby-close-pbi`, `dobby-implement-pbi`) — no dispatcher, no nested backend `SKILL.md` reads, no `backend`-key branching at invocation.
+A project targets exactly one scenario, so dobby specializes the skills for it **at generation time** rather than routing at every invocation. The generator (`scripts/build-skills.py`) assembles a **flat** skill set under the user-facing names (`dobby-triage`, `dobby-create-pbi`, `dobby-update-pbi`, `dobby-propose-from-pbi`, `dobby-close-pbi`, `dobby-implement-pbi`) — no dispatcher, no nested backend `SKILL.md` reads, no `backend`-key branching at invocation.
 
 ```
 .dobby/config.json          ← per-project connection details + the recorded scenario

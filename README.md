@@ -2,6 +2,8 @@
 
 Agentic DevOps — a collection of agent **skills** that automate the work-item lifecycle (create → propose-spec → implement → close-with-evidence) across **Azure DevOps** (PBIs) and **GitHub** (Issues). A project targets one scenario (`ado`, `github`, or `combined`) and dobby assembles a flat, specialized skill set for it.
 
+![dobby](./assets/dobby-1280x640.png)
+
 ## Prerequisites
 
 The `dobby-propose-from-pbi` skill and the OpenSpec workflow depend on the OpenSpec CLI. dobby does **not** bundle the `openspec-*` workflow skills — those are installed per-project by the OpenSpec CLI itself (see [Configure skills for your project](#configure-skills-for-your-project)). You still need the CLI on PATH for both.
