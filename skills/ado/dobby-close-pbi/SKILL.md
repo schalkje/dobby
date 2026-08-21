@@ -296,6 +296,14 @@ python skills/_lib/azdo-update-fields.py \
 
 If any acceptance criteria cannot be confirmed as done, leave them unchecked AND include them in the closing comment under `### Acceptance criteria`.
 
+### 7a. DORA for DevOps — Test Evidence
+
+**Every artefact this phase produces carries this banner:**
+
+<!-- dobby:include:dora-banner -->
+
+<!-- dobby:include:dora-closure-phase -->
+
 ### 8. Close the PBI
 
 **8a. Add closing comment**
@@ -306,6 +314,8 @@ az boards work-item update --id <pbi-id> --discussion "<closing-comment>" --orga
 ```
 
 **8b. Set state to Done**
+
+If the PBI is in DORA scope, step 7a must have reported `ready-to-close` (recomputed, attested, flags verified) before this command runs.
 ```bash
 az boards work-item update --id <pbi-id> --state "Done" --organization "<org-url>" --output json
 ```
@@ -333,6 +343,7 @@ openspec archive "<change-name>"
 - **Title**: <title>
 - **State**: Done
 - **Acceptance criteria**: N/N checked
+- **DORA**: <flow / class / profile, N tests evidenced, attested by <name> — or "not in scope" / "extension not installed">
 - **Child tasks closed**: <count> (if any)
 - **Screenshots**: N attached (if any)
 - **Closing comment**: added to Discussion
@@ -360,6 +371,7 @@ openspec archive "<change-name>"
 - **For UI/visual changes, always recommend screenshots before closing.** Do not silently skip screenshots for UI work.
 - **Use clean markdown in closing comments** — no HTML comments (`<!-- -->`), no inline HTML. Omit empty sections rather than including placeholder text.
 - **Verify acceptance criteria against evidence** — do not blindly check all boxes. Cross-reference each criterion with implementation evidence.
+- **Never close an in-scope PBI on unverified DORA state** — recompute the gates, report missing evidence as gaps, and never resolve a gap by opting a test out.
 - **Multiple screenshots are welcome** — encourage capturing different states/views, not just a single screenshot.
 
 ### Scope

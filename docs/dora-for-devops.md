@@ -200,7 +200,7 @@ Pilot feedback flagged this question as unclear — a skill should explain it ra
 | 41 – 70 | `Medium` | `Medium` |
 | 71 – 104 | `High` | `High` |
 
-> Note the implemented bounds are **10–104**, not the policy document's 0–110. Because Q1 has no zero-score answer, the minimum reachable explicit score is 10 and the maximum is 104. Thresholds are labelled *indicative* in the policy.
+> Note the implemented bounds are **10–104**, not the policy document's 0–110. Because Q1 has no zero-score answer, the minimum reachable explicit score is 10. (The arithmetic maximum over the answer set is in fact 101 — Q1 20 + Q2 20 + Q3 15 + Q5 8 + Q6 8 + Q7 10 + Q8 20, with Q4 scoring 0 because a `yes` there suppresses Q5's 8 — so the band's upper bound of 104 is never reached.) Thresholds are labelled *indicative* in the policy.
 
 ### Calculation
 
@@ -298,6 +298,8 @@ All fields are on the `Product Backlog Item` work item type. `Picklist` values a
 | `Custom.DoraClosureAllowed` | Boolean | computed; gates Done |
 | `Custom.DoraEvidenceComplete` | Boolean | computed; gates Done |
 
+> **Both computed flags are written by a work-item form contribution, which never executes on a REST write.** A stored value can therefore be arbitrarily stale — and a stale `true` is a false compliance assurance, worse than no check at all. Skills must **recompute** both from the twelve status/evidence/motivation fields (§6) and refuse to close on a mismatch, never trusting the stored value.
+
 ### Questions and scores
 
 `Custom.DoraQ1SlaRating` … `Custom.DoraQ8DataImpact` (strings, values per §5) and `Custom.DoraQ1Score` … `Custom.DoraQ8Score` (integers, computed).
@@ -317,16 +319,22 @@ The org also carries older fields from a previous cycle: `Custom.DORA`, `Custom.
 ## 8. Where this lands in the dobby lifecycle
 
 ```
-dobby-create-pbi ──┐
-                   ├─→ refinement: scope decision + risk assessment  (§9)
-dobby-update-pbi ──┘            ↓ writes Q1–Q8, flow, class, profile
-                                ↓ writes Status for every test in the final set
-dobby-implement-pbi ─→ collects evidence artefacts as work proceeds
+dobby-create-pbi ──→ scope touchpoint: apply the `Change` tag when the PBI is
+                   │  a significant IT change (no scoring, no field writes)
+                   ↓
+dobby-update-pbi ──→ refinement: scope decision + risk assessment  (§9)
+                                ↓ writes Q1–Q8, flow, class, profile
+                                ↓ writes Status for every one of the 12 tests
                                 ↓
 dobby-close-pbi ────→ closure: register evidence + motivations       (§10)
-                                ↓ writes Evidence/Motivation, verifies gates
+                                ↓ writes Evidence/Motivation where they apply
+                                ↓ recomputes the gates, requires human attestation
                                 ↓ only then sets State = Done
 ```
+
+> **`dobby-implement-pbi` is deliberately not part of this flow.** In the `combined` scenario it `reuse`s the **github** source, so there is no legal place to put ADO-specific DORA prose without either editing an off-limits file or forking the skill. Every artefact it might pre-stage (build runs, PR links, test results) is re-derivable at closure, so `dobby-close-pbi` harvests it there instead.
+>
+> `dobby-propose-from-pbi` is likewise untouched: it generates an OpenSpec change and writes no DORA fields.
 
 ---
 
@@ -343,14 +351,14 @@ dobby-close-pbi ────→ closure: register evidence + motivations       (
 3. **Ensure the `Change` tag.** In scope but untagged → propose adding `Change` (this is what makes the DORA panel appear). Never remove the tag.
 4. **Implicit criteria.** Test both knockouts against evidence in the PBI. If one holds, propose `FlowType = Implicit` with the criterion named and quoted.
 5. **Explicit questionnaire.** If neither holds, walk Q1–Q8. For each question present: the proposed answer value, its label, its score, and the PBI text (or user answer) that justifies it. Respect the Q4 → Q5 skip rule.
-6. **Missing information.** Any question that cannot be justified from the PBI is `Unknown`. Ask the user. **Never** default an unknown to the lowest-scoring option, and never treat a missing SLA field as Bronze.
+6. **Missing information.** Any question that cannot be justified from the PBI is `Unknown`. Ask the user, or record it as a visibly marked `assumption` for review. **Never** default an unknown to the lowest-scoring option, and never treat a missing SLA field as Bronze.
 7. **Compute.** Show the arithmetic, the total, the threshold band, and the resulting class and suggested profile.
-8. **Derive the final test set.** From the suggested profile, list suggested tests. Ask about opt-outs (with motivation) and opt-ins (with motivation). Recompute the effective status per §6.
+8. **Derive the final test set.** From the suggested profile, list suggested tests. Opt-ins may be proposed (they only add coverage); **opt-outs must never be proposed by the skill** — record one only when the user states it explicitly, with a motivation. Recompute the effective status per §6.
 9. **Present the draft** using the report format in §11 and get explicit confirmation.
 10. **Write fields** (see §12). Write the flow, the answers, the scores, the class, the profile, and a `Status` for **every** one of the 12 tests — including `NotRequired` for those outside the set.
-11. **Add a discussion comment** carrying the full assessment table plus the AI-draft banner (§13).
+11. **Add a discussion comment** carrying the full assessment table plus the AI-draft banner (§13). Post the reasoning **before** the field writes so review happens against a durable record. For an implicit-Low PBI this comment is **mandatory**: there is no field for the criterion that applied (`DORA_IMPLICIT_CRITERIA` is UI copy with no `fieldRef`), so the comment is the primary audit artefact and must name the criterion and quote the substantiating PBI text. Should the extension owners later ship a `Custom.DoraImplicitCriterion` field, `azdo-dora.py` can write it via `--implicit-criterion-field` without further rework.
 
-Leave `Custom.DoraClosureAllowed` and `Custom.DoraEvidenceComplete` alone where possible; they are computed. If the skill writes them, it must apply the exact rules in §5 and §6.
+Leave `Custom.DoraClosureAllowed` and `Custom.DoraEvidenceComplete` to the closure flow, which recomputes them from the twelve test rows (§6). Refinement writes neither.
 
 ---
 
@@ -369,9 +377,10 @@ Leave `Custom.DoraClosureAllowed` and `Custom.DoraEvidenceComplete` alone where 
 4. **Fill the gaps by asking.** For each `inFinalSet` test lacking evidence, ask specifically — the evidence hint in §6 is the prompt. For each `OptedIn`/`OptedOut` test lacking a motivation, ask for the motivation.
 5. **Assess evidence quality, separately from classification.** Produce the table in §11. A link is **not** proof that a test passed; only claim *Sufficient* when the referenced content actually says so, or the user confirms it.
 6. **Write evidence and motivation fields.**
-7. **Verify the gates.** Re-read the work item. If `DoraEvidenceComplete` is false or `DoraClosureAllowed` is false, report exactly which test keys are missing evidence or motivation and **do not** attempt the transition.
-8. **Post the closing comment** with the DORA evidence section appended to dobby's existing closing summary.
-9. **Close** — set `System.State = Done` only after step 7 passes.
+7. **Verify the gates by recomputation.** Re-read the work item and recompute `DoraEvidenceComplete` and `DoraClosureAllowed` from the twelve test rows — never trust the stored values, including a stored `true`. Report exactly which test keys are missing evidence or motivation and **do not** attempt the transition while any remain. Missing evidence is a gap; it is never resolved by opting the test out.
+8. **Obtain explicit human attestation** that the evidence is accurate and complete, and record who attested and when. Only then write the two gate flags.
+9. **Post the closing comment** with the DORA evidence section appended to dobby's existing closing summary, carrying the AI-draft banner, the source `System.Rev`, and the attestation.
+10. **Close** — re-read and verify the flags, then set `System.State = Done`. Never write `ClosureAllowed = true` and transition in a single action.
 
 ### Evidence formats accepted
 
@@ -449,24 +458,26 @@ Skills emit this Markdown, both to the user and (condensed) into the PBI discuss
 
 ### Writing the fields
 
-`Custom.Dora*` are plain (non-multiline) fields, so they can be PATCHed directly. Reuse the existing helper pattern rather than inventing a new mechanism:
+`Custom.Dora*` are plain (non-multiline) fields, so they can be PATCHed directly. **Implemented as `skills/_lib/azdo-dora.py`**, a dedicated helper with `catalog` / `score` / `read` / `check` / `write-assessment` / `write-evidence` / `finalize` subcommands.
 
-- extend `skills/_lib/azdo-update-fields.py` to accept arbitrary `--field <ref>=<value>` pairs (it currently targets the multiline Description / Acceptance Criteria fields and their `multilineFieldsFormat`), **or**
-- add a dedicated `skills/_lib/azdo-dora.py` with `read` / `assess` / `evidence` subcommands that owns the questionnaire table, thresholds, and effective-status logic in one place.
+`azdo-update-fields.py` was deliberately **not** extended: its `--field <ref>=<FILE>` signature takes a *file path* and forces `multilineFieldsFormat: Markdown`, which is incompatible with the ~40 scalar picklist / integer / boolean fields this process writes.
 
-A dedicated script is preferred: the scoring, the Q4→Q5 skip, the effective-status derivation, and the completeness rules are real logic that should not live in prose. It must follow the existing `_lib` conventions — Python 3 stdlib only, the `AZURE_DEVOPS_EXT_PAT` → `ADO_TOKEN` → `az account get-access-token` auth chain, and retry-with-backoff on 429/502/503/504. It would be bundled into `dobby-update-pbi` and referenced by `dobby-close-pbi`.
+The scoring, the Q4→Q5 skip, the effective-status derivation, the applicability matrix, and the completeness rules are real logic that must not live in prose. The script follows the existing `_lib` conventions — Python 3 stdlib only, the `AZURE_DEVOPS_EXT_PAT` → `ADO_TOKEN` → `az account get-access-token` auth chain, and retry-with-backoff on 429/502/503/504. It is bundled under `dobby-update-pbi` and referenced by `dobby-close-pbi` (both `ado` and `combined`).
 
-Because the value tables are duplicated between §5/§6 and the script, keep **one** source of truth: the script, with this document as its narrative reference.
+Guardrails are enforced in code, not only in prose: the writable-field whitelist excludes the legacy `Custom.DORA*` fields; blank and `unknown` answers are rejected rather than defaulted; `Q4 = yes` writes `Q5 = no` explicitly; Evidence is accepted only for `Required`/`OptedIn` rows and Motivation only for `OptedIn`/`OptedOut`; an `OptedOut` status requires an explicit user-requested flag plus a motivation; and `finalize` refuses to write the gate flags without an attestor or with any gap outstanding.
+
+`scripts/dora-selfcheck.py` exercises the scoring boundaries, the derivation table, and every guardrail offline.
 
 ### Reading the fields
 
-`az boards work-item show --id <id> --organization <org> --output json` returns all `Custom.Dora*` fields. Per the existing skill rules, run it standalone and reason over the full JSON — no piping.
+`az boards work-item show --id <id> --organization <org> --output json` returns all `Custom.Dora*` fields, and `azdo-dora.py read` returns the same state already derived. Per the existing skill rules, run either standalone and reason over the full JSON — no piping.
 
 ### Scenario coverage
 
-- **`ado`** — full support: assessment in `dobby-update-pbi` / `dobby-create-pbi`, evidence in `dobby-close-pbi`.
-- **`combined`** — the work item lives in ADO, so `create` / `update` / `propose` already reuse `ado` and inherit the assessment unchanged. `combined/dobby-close-pbi` needs the evidence phase added on its ADO side, with GitHub PR and pipeline links harvested as evidence values.
-- **`github`** — **out of scope.** DORA-for-DevOps is defined against ADO PBI fields; there is no GitHub Issue equivalent. Do not add DORA prose to `skills/github/*`.
+- **`ado`** — full support: the `Change`-tag scope touchpoint in `dobby-create-pbi`, the assessment phase in `dobby-update-pbi`, the evidence phase in `dobby-close-pbi`.
+- **`combined`** — the work item lives in ADO, so `create` / `update` / `propose` already reuse `ado` and inherit the assessment unchanged. `combined/dobby-close-pbi` carries the same evidence phase on its ADO side, harvesting GitHub PR, commit, and pipeline links as evidence values.
+- **`github`** — **out of scope.** DORA-for-DevOps is defined against ADO PBI fields; there is no GitHub Issue equivalent. Do not add DORA prose to the github-scenario sources.
+- **`dobby-implement-pbi`** — untouched in every scenario (see §8).
 
 After editing sources, regenerate and verify:
 
@@ -475,7 +486,7 @@ python scripts/build-skills.py dev
 python scripts/check-skill-sync.py
 ```
 
-Add eval cases under the touched skills' `evals/evals.json` covering: an out-of-scope PBI, an implicit-Low PBI, an explicit questionnaire containing an `Unknown`, an opt-out without motivation (must fail the gate), and a closure attempt with `DoraEvidenceComplete = false` (must refuse to close).
+Eval cases live under the touched skills' `evals/evals.json` (`skills/ado/dobby-update-pbi/` and `skills/ado/dobby-close-pbi/`) and cover: an out-of-scope PBI, an implicit-Low PBI, an answer that must be marked as an `assumption`, an unknown answer that must not become the lowest score, an opt-out without motivation, a recomputed `DoraEvidenceComplete = false`, a **stale stored `true` that must not be trusted**, a **closure attempt without attestation that must not write**, and a **missing-evidence case where opting out is the tempting shortcut and must not be taken**. `run-skill-evals.py` emits manual run sheets rather than executing anything — a green validation count is not proof of behaviour.
 
 ---
 
@@ -489,6 +500,13 @@ The skill **must**:
 - never assume Bronze from the absence of an SLA field;
 - never assume rollback is safe merely because a deployment can technically be repeated — distinguish *rollback capability* from *rollback without permanent damage*;
 - never infer that a test passed from the presence of a link or an unchecked checkbox;
+- never fabricate evidence — write nothing where no artefact was located, and report the test as an open gap;
+- never propose or write an `OptedOut` status to resolve missing evidence; an opt-out is valid only when the user stated it explicitly, with a motivation;
+- never trust a stored `DoraEvidenceComplete` / `DoraClosureAllowed` value — always recompute from the twelve test rows;
+- never read an unrecognized `SuggestedTestProfile` (empty, mis-cased, localized) as "no tests required" — it is a hard blocker that forces a re-assessment, because a silent default there turns an unevidenced High change green;
+- clear evidence and motivation from rows that a re-assessment or an opt-out made inapplicable, and reset `DoraEvidenceComplete` when re-assessing — evidence gathered under a previous test set does not carry over;
+- never use the out-of-scope write as an escape hatch: it is refused while the `Change` tag is present, and refused on an already-assessed PBI unless the user explicitly discards the earlier assessment;
+- require explicit human attestation before writing the gate flags, and record who attested and when;
 - never treat `System.State = Done` as proof the assessment happened (form validation is bypassable via bulk edit, REST, imports, and automations — a known governance gap); inspect the DORA fields instead;
 - show the arithmetic and the threshold band;
 - flag policy wording marked *indicative* or *unresolved*;

@@ -106,6 +106,7 @@ All ADO helper scripts live in `skills/_lib/` and are bundled (once, into an own
 | `azdo-add-dev-links.py` | Adds Development links (commit / branch / PR) to a work item, choosing between ArtifactLink and Hyperlink based on whether the org's ADO can reach the repo. |
 | `azdo-delete-comment.py` | Deletes a work-item comment (used to "edit" a markdown comment by delete-then-repost, avoiding the HTML downgrade bug). |
 | `azdo-get-comments.py` | Fetches a work item's discussion thread (used by the ADO update/refine flow). |
+| `azdo-dora.py` | Owns the **DORA for DevOps** per-change process: the questionnaire values and scores, the 10–104 thresholds, the twelve-test catalogue, the effective-status derivation, and the evidence-completeness rules. `az boards` cannot write the ~40 scalar `Custom.Dora*` picklist/integer/boolean fields, and `azdo-update-fields.py` is unsuitable (its `--field REF=FILE` signature takes a file path and forces Markdown format). Guardrails are enforced in code: unknown answers are rejected rather than defaulted, evidence is written only where it applies, an opt-out needs an explicit user decision plus a motivation, and the gate flags are always recomputed — never read. See `docs/dora-for-devops.md`. |
 
 All Azure DevOps scripts share the **same auth fallback chain** (`AZURE_DEVOPS_EXT_PAT` → `ADO_TOKEN` → `az account get-access-token`) and the same retry-with-backoff for HTTP 429/502/503/504. Keep that pattern when adding new ADO helper scripts.
 
@@ -120,6 +121,7 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 | `scripts/build-skills.py` | The scenario-skill generator. `build` (all → `build/<scenario>/`), `init <target> <scenario>`, `dev` (github → dobby's own `.claude/skills/` + `.github/skills/`). |
 | `scripts/check-skill-sync.py` | Verifies dobby's committed host copies match the generator's `dev` (github) output. Exits non-zero with the drifted files on failure. |
 | `scripts/run-skill-evals.py` | Validates (`--validate`, in CI), lists, and emits manual run sheets for the per-skill eval definitions (`skills/*/*/evals/evals.json`). When editing a skill that has evals, re-run its evals. Schema in `scripts/README.md`. |
+| `scripts/dora-selfcheck.py` | Offline self-check for `skills/_lib/azdo-dora.py` — scoring boundaries, the Q4→Q5 skip, effective-status derivation, completeness, and every coded guardrail. Run it after touching the DORA helper. |
 
 ### Cross-skill invariants
 
@@ -134,6 +136,7 @@ The `gh` CLI is mature enough that the github-scenario skills shell out directly
 - **Combined mode**: `backend: "combined"` means ADO for work items + GitHub for repo/PRs. Both `ado` and `github` config blocks must be populated, and both identities (`az account show` + `gh auth status`) are verified at the start of the combined skills.
 - **GitHub close requires a PR**: the github-scenario `dobby-close-pbi` refuses to proceed unless an open PR references the issue via `Closes #<N>`, `Fixes #<N>`, or `Resolves #<N>`. Closure happens at PR merge, not by `gh issue close`.
 - **Two-step ADO PBI creation**: `az boards work-item create` (basic fields) → `azdo-update-fields.py` (markdown body). Never pass `--description` to `az boards work-item create`; it will truncate.
+- **DORA for DevOps is ADO-only and script-owned**: the questionnaire, thresholds, test catalogue, effective-status derivation, and completeness rules live in `skills/_lib/azdo-dora.py`, not in prose. The refinement phase (`ado/dobby-update-pbi`) and the closure phase (`ado/dobby-close-pbi`, `combined/dobby-close-pbi`) are shared `_fragments`. No DORA prose ships in the github scenario, and `dobby-implement-pbi` is untouched. See `docs/dora-for-devops.md`.
 - **Identity displayed early**: every skill that touches a tracker runs `az account show` or `gh auth status` before doing real work so the user can catch wrong-account issues before wasting a flow.
 - **Trust user-provided field values**: skills should NOT pre-validate area paths, iterations, labels, or parent IDs against listings if the user supplied them. Attempt the operation, re-prompt only on failure.
 - **Never auto-retry creation**: prevents duplicate work items / issues.
