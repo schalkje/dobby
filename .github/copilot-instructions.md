@@ -30,6 +30,7 @@ After any edit under `skills/`, regenerate the host copies before committing:
 ```bash
 python scripts/build-skills.py dev       # regenerate .github/skills/ and .claude/skills/ (github scenario)
 python scripts/check-skill-sync.py       # verify no drift (exits non-zero on drift)
+python scripts/dora-selfcheck.py         # only when skills/_lib/azdo-dora.py changed
 ```
 
 See [`scripts/README.md`](../scripts/README.md) for details.

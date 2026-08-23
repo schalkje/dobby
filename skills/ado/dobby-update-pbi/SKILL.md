@@ -284,6 +284,18 @@ Show the user the full proposed refinement before applying:
 
 Then ask: **"Do you want me to apply this refinement to the PBI?"**
 
+### R6a. DORA for DevOps Assessment
+
+Run this phase after the refinement is presented (R6) and **before** applying it (R7) — the assessment reasons over the refined description and acceptance criteria from R5, and the confirmed result is written alongside them.
+
+Skip it when the work item is not a Product Backlog Item, or when `azdo-dora.py read` reports `doraFieldsPresent: false`.
+
+**Every artefact this phase produces carries this banner:**
+
+<!-- dobby:include:dora-banner -->
+
+<!-- dobby:include:dora-refinement-phase -->
+
 ### R7. Apply the Refinement
 
 On user approval, apply using the same helper script as field update mode (step 5):

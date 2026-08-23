@@ -115,6 +115,16 @@ The commit URL is `https://github.com/<owner>/<repo>/commit/<full-sha>` and the 
 
 <!-- dobby:include:ado-dev-links -->
 
+### 7a. DORA for DevOps — Test Evidence (Azure DevOps side)
+
+The assessment and its evidence live on the **ADO PBI**, while the artefacts live in **GitHub**. Harvest the GitHub PR URL, the head commit URL, the branch URL, linked Actions/pipeline runs and their test results, ORCA scan links posted on the PR, and any committed evidence under `docs/evidence/pbi-<id>/` — then map each to a test key as the evidence value.
+
+**Every artefact this phase produces carries this banner:**
+
+<!-- dobby:include:dora-banner -->
+
+<!-- dobby:include:dora-closure-phase -->
+
 ### 8. Acceptance Criteria & Close (Azure DevOps)
 
 **8a. Check off acceptance criteria** against the evidence — change confirmed `- [ ]` to `- [x]`; leave unconfirmed unchecked and list them in the closing comment:
@@ -127,6 +137,8 @@ python skills/_lib/azdo-update-fields.py \
 **8b. Child tasks**: list them; with user confirmation, set open children to Done.
 
 **8c. Set state to Done:**
+
+If the PBI is in DORA scope, step 7a must have reported `ready-to-close` (recomputed, attested, flags verified) before this command runs.
 ```bash
 az boards work-item update --id <id> --state "Done" --organization "<org-url>" --output json
 ```
@@ -145,6 +157,7 @@ If a workflow rule requires an intermediate state, transition through it first.
 - **PR**:  #<pr-number> — <pr-url>  (evidence committed + embedded)
 - **Dev links**: commit / branch / PR linked to the PBI
 - **Acceptance criteria**: N/N checked
+- **DORA**: <flow / class / profile, N tests evidenced, attested by <name> — or "not in scope" / "extension not installed">
 - **Screenshots**: N committed to docs/evidence/pbi-<id>/ and attached to the PBI
 - **PBI URL**: <work-item-url>
 ```
@@ -157,6 +170,7 @@ If a workflow rule requires an intermediate state, transition through it first.
 - Push the PR branch before embedding images or adding dev links, so URLs resolve.
 - Use clean markdown in ADO comments (no HTML, no `<!-- -->`); omit empty sections.
 - Verify acceptance criteria against evidence — do not blindly check every box.
+- Never close an in-scope PBI on unverified DORA state — recompute the gates, report missing evidence as gaps, and never resolve a gap by opting a test out.
 - Show the closing comment and PR-body changes to the user before posting.
 
 ## Usage Examples

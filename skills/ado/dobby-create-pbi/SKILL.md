@@ -214,6 +214,10 @@ A PBI's parent MUST be a Feature (critical rule 5). If the user provides a paren
 - If the user did not mention a parent: ask whether to create without a parent or search for one.
   - If creating without a parent and this is one of multiple PBIs being created → a Feature parent is strongly recommended. Propose creating one (see `references/feature-split.md`).
 
+**3f. DORA scope decision** (`Change` tag)
+
+<!-- dobby:include:dora-scope-tag -->
+
 ### 4. Confirm Before Creation
 
 Display a summary of all collected fields:
@@ -227,6 +231,7 @@ Display a summary of all collected fields:
 - **Area Path**: <area-path>
 - **Iteration**: <iteration>
 - **Parent**: <parent-id and title, or "none">
+- **Tags**: <tags, including `Change` when this is a significant IT change — or "none">
 
 Proceed? (or tell me what to change)
 ```
@@ -259,6 +264,14 @@ az boards work-item create --title "<title>" --type "Product Backlog Item" --pro
 ```
 - The description is set via the helper script in step 5c; the parent is linked in step 5d.
 - Extract the work item `id` from the output.
+
+If step 3f concluded the PBI is a significant IT change, apply the `Change` tag:
+
+```bash
+az boards work-item update --id <id> --fields "System.Tags=Change; <other-tag>; <other-tag>" --organization "<org-url>" --output json
+```
+
+`System.Tags` is **replaced**, not appended — list `Change` together with every other tag the user asked for in the same semicolon-separated value, or those tags are lost.
 
 **Error handling:**
 - Permission denied → "You don't have permission to create work items under this area path. Check your account (<user>) or try a different area path."
@@ -317,6 +330,8 @@ az boards work-item relation add --id <new-pbi-id> --relation-type "parent" --ta
 - **Area Path**: <area-path>
 - **Iteration**: <iteration>
 - **Parent**: <parent-id> (if linked)
+- **Tags**: <tags, or "none">
+- **DORA scope**: <in scope (`Change` tagged) — assess during refinement | out of scope — <reason> | not applicable>
 - **URL**: <direct-url>
 ```
 
